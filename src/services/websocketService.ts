@@ -54,6 +54,14 @@ export class WebSocketService {
                     this.handleJoinRoom(ws, data, roomId);
                     break;
 
+                case WEBSOCKET_MESSAGE_TYPES.JOIN_ROOM_BY_ID:
+                    this.handleJoinRoomById(ws, data, roomId);
+                    break;
+
+                case WEBSOCKET_MESSAGE_TYPES.GET_ROOM_INFO:
+                    this.handleGetRoomInfo(ws, roomId);
+                    break;
+
                 case WEBSOCKET_MESSAGE_TYPES.LEAVE_ROOM:
                     this.handleLeaveRoom(ws, playerId, roomId);
                     break;
@@ -257,6 +265,130 @@ export class WebSocketService {
             });
         } catch (error) {
             this.sendError(ws, "Error joining room");
+        }
+    }
+
+    /**
+     * Handle join room by ID request (for reconnection)
+     * @param ws - WebSocket connection
+     * @param data - Message data
+     * @param roomId - Room ID
+     */
+    private handleJoinRoomById(ws: any, data: any, roomId?: string): void {
+        if (!roomId) {
+            this.sendError(ws, "Room ID required");
+            return;
+        }
+
+        const { playerId } = data;
+
+        if (!playerId) {
+            this.sendError(ws, "Player ID required");
+            return;
+        }
+
+        try {
+            const { password } = data;
+            
+            // Check if player is already in the room before joining
+            const existingRoom = this.roomService.getRoom(roomId);
+            const wasAlreadyInRoom = existingRoom?.game?.players?.some(p => p.id === playerId) || false;
+            
+            const room = this.roomService.joinRoomById(roomId, playerId, password);
+            if (!room) {
+                this.sendError(ws, "Room not found, room is full, or invalid password");
+                return;
+            }
+
+            // Store player connection
+            this.playerConnections.set(playerId, ws);
+            this.roomService.addConnection(roomId, playerId, ws);
+
+            // Notify all players in room about the new player (if it's a new player)
+            if (!wasAlreadyInRoom && room.game) {
+                // This is a new player joining via direct link
+                this.broadcastToRoom(roomId, {
+                    type: WEBSOCKET_MESSAGE_TYPES.PLAYER_JOINED,
+                    data: {
+                        player: { id: playerId, name: `Player-${playerId.slice(-6)}` },
+                        game: this.gameService.getGameWithActions(room.game.id),
+                    },
+                });
+
+                // Check if we have enough players to start the game
+                if (room.game.players.length >= 2 && !room.isActive) {
+                    const startedGame = this.gameService.startGame(room.game.id);
+                    const gameWithHand = this.gameService.dealNewHand(startedGame.id);
+                    this.roomService.updateRoomGame(roomId, gameWithHand);
+                    this.roomService.setRoomActive(roomId, true);
+
+                    // Update room reference
+                    room.game = gameWithHand;
+                    room.isActive = true;
+
+                    this.broadcastToRoom(roomId, {
+                        type: WEBSOCKET_MESSAGE_TYPES.GAME_STARTED,
+                        data: {
+                            room: this.roomToResponse(room),
+                            game: this.gameService.getGameWithActions(gameWithHand.id),
+                        },
+                    });
+                }
+            }
+
+            // Send room data to joining player
+            this.sendMessage(ws, {
+                type: WEBSOCKET_MESSAGE_TYPES.ROOM_JOINED,
+                data: {
+                    room: this.roomToResponse(room),
+                    game: room.game ? this.gameService.getGameWithActions(room.game.id) : null,
+                },
+            });
+
+        } catch (error) {
+            console.error("Error in handleJoinRoomById:", error);
+            this.sendError(ws, "Internal server error");
+        }
+    }
+
+    /**
+     * Handle get room info request
+     * @param ws - WebSocket connection
+     * @param roomId - Room ID
+     */
+    private handleGetRoomInfo(ws: any, roomId?: string): void {
+        if (!roomId) {
+            this.sendError(ws, "Room ID required");
+            return;
+        }
+
+        try {
+            const room = this.roomService.getRoom(roomId);
+            if (!room) {
+                this.sendError(ws, "Room not found");
+                return;
+            }
+
+            // Send room info (without sensitive data like password)
+            this.sendMessage(ws, {
+                type: WEBSOCKET_MESSAGE_TYPES.ROOM_INFO,
+                data: {
+                    room: {
+                        id: room.id,
+                        name: room.name,
+                        maxPlayers: room.maxPlayers,
+                        players: room.game?.players || [],
+                        isActive: room.isActive,
+                        isPrivate: room.isPrivate,
+                        maxScore: room.maxScore,
+                        createdAt: room.createdAt
+                    }
+                },
+            });
+
+        } catch (error) {
+            console.error("Error in handleGetRoomInfo:", error);
+            this.sendError(ws, "Internal server error");
         }
     }
 

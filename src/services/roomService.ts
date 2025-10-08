@@ -79,6 +79,59 @@ export class RoomService {
     }
 
     /**
+     * Join a room by ID when player already exists (for reconnection)
+     * @param roomId - Room ID
+     * @param playerId - Player ID
+     * @param password - Optional password for private rooms
+     * @returns Room if successful, null otherwise
+     */
+    joinRoomById(roomId: string, playerId: string, password?: string): Room | null {
+        const room = this.rooms.get(roomId);
+        if (!room) {
+            console.log(`Room ${roomId} not found`);
+            return null;
+        }
+
+        // Check if room has a game
+        if (!room.game) {
+            console.log(`Room ${roomId} has no game`);
+            return null;
+        }
+
+        // Check if player is already in this room
+        const existingPlayer = room.game.players.find(p => p.id === playerId);
+        if (existingPlayer) {
+            // Player is already in the room, just update mapping
+            this.playerRooms.set(playerId, roomId);
+            console.log(`Player ${playerId} successfully reconnected to room ${roomId}`);
+            return room;
+        }
+
+        // Player is not in the room, check if we can add them
+        if (room.game.players.length >= room.maxPlayers) {
+            console.log(`Room ${roomId} is full`);
+            return null;
+        }
+
+        // Check password for private rooms
+        if (room.isPrivate && room.password && room.password !== password) {
+            console.log(`Invalid password for private room ${roomId}`);
+            return null;
+        }
+
+        // Add player to the room
+        const playerName = `Player-${playerId.slice(-6)}`; // Generate a name from player ID
+        const team = room.game.players.length % 2;
+        const updatedGame = this.gameService.addPlayerToGame(room.game.id, playerId, playerName, team);
+
+        room.game = updatedGame;
+        this.playerRooms.set(playerId, roomId);
+
+        console.log(`Player ${playerId} successfully joined room ${roomId} via direct link`);
+        return room;
+    }
+
+    /**
      * Leave a room
      * @param playerId - Player ID
      * @returns True if successful
@@ -123,6 +176,7 @@ export class RoomService {
     getRoom(roomId: string): Room | null {
         return this.rooms.get(roomId) || null;
     }
+
 
     /**
      * Get all rooms
