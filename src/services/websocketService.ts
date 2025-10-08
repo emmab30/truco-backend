@@ -176,10 +176,10 @@ export class WebSocketService {
     }
 
     private handleCreateRoom(ws: any, data: any): void {
-        const { roomName, playerName, playerId, maxPlayers = 2, isPrivate = false, password, maxScore = 15 } = data;
+        const { roomName, playerName, playerId, maxPlayers = 2, isPrivate = false, password, maxScore = 15, gameType = 'truco' } = data;
 
         try {
-            const room = this.roomService.createRoom(roomName, playerName, playerId, maxPlayers, isPrivate, password, maxScore);
+            const room = this.roomService.createRoom(roomName, playerName, playerId, maxPlayers, isPrivate, password, maxScore, gameType);
 
             // Store player connection
             this.playerConnections.set(playerId, ws);
@@ -798,6 +798,9 @@ export class WebSocketService {
             players: room.game.players,
             isActive: room.isActive,
             createdAt: room.createdAt,
+            isPrivate: room.isPrivate,
+            maxScore: room.maxScore,
+            gameType: room.gameType,
         };
     }
 }

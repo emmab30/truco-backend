@@ -3,7 +3,7 @@ import { GameService } from "../services/gameService";
 import { RoomService } from "../services/roomService";
 import { ApiResponse, RoomResponse, GameResponse } from "../types";
 import authRoutes from "./auth";
-import { optionalAuth, AuthenticatedRequest } from "../middleware/auth";
+// import { optionalAuth } from "../middleware/auth";
 
 const router = Router();
 
@@ -71,6 +71,7 @@ router.get("/rooms/:id", (req: any, res: any) => {
                 game: room.game,
                 isPrivate: room.isPrivate,
                 maxScore: room.maxScore,
+                gameType: room.gameType,
             },
         };
         res.json(response);
@@ -132,6 +133,7 @@ router.post("/rooms", (req: any, res: any) => {
                 game: room.game,
                 isPrivate: room.isPrivate,
                 maxScore: room.maxScore,
+                gameType: room.gameType,
             },
         };
         res.status(201).json(response);
@@ -184,6 +186,7 @@ router.post("/rooms/:id/join", (req: any, res: any) => {
                 game: room.game,
                 isPrivate: room.isPrivate,
                 maxScore: room.maxScore,
+                gameType: room.gameType,
             },
         };
         res.json(response);

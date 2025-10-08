@@ -8,7 +8,6 @@ import {
   GameResponse
 } from '../types';
 import { 
-  createGame, 
   addPlayer, 
   startGame, 
   dealNewHand, 
@@ -20,6 +19,7 @@ import {
   respondTruco, 
   goToMazo 
 } from '../game/gameLogic';
+import { createGameByType } from '../game/gameFactory';
 import { getAvailableActions } from '../game/actions';
 // generateId is not used in this file
 
@@ -33,10 +33,11 @@ export class GameService {
   /**
    * Create a new game
    * @param maxScore - Maximum score for the game (15 or 30)
+   * @param gameType - Type of game ('truco', 'chinchon', etc.)
    * @returns New game object
    */
-  createGame(maxScore: number = 15): Game {
-    const game = createGame(maxScore);
+  createGame(maxScore: number = 15, gameType: string = 'truco'): Game {
+    const game = createGameByType(gameType as any, maxScore);
     this.games.set(game.id, game);
     return game;
   }

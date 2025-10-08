@@ -1,6 +1,7 @@
 import { Room, RoomResponse, Team } from "../types";
 import { GameService } from "./gameService";
 import { generateId } from "../utils";
+import { getGameFactory, isValidGameType } from "../game/gameFactory";
 
 /**
  * Room Service
@@ -17,15 +18,27 @@ export class RoomService {
      * @param roomName - Room name
      * @param playerName - Player name
      * @param playerId - Player ID
-     * @param maxPlayers - Maximum players (forced to 2)
+     * @param maxPlayers - Maximum players
      * @param isPrivate - Whether the room is private
      * @param password - Password for private rooms
-     * @param maxScore - Maximum score for the game (15 or 30)
+     * @param maxScore - Maximum score for the game
+     * @param gameType - Type of game ('truco', 'chinchon', etc.)
      * @returns Created room
      */
-    createRoom(roomName: string, playerName: string, playerId: string, _maxPlayers: number = 2, isPrivate: boolean = false, password?: string, maxScore: number = 15): Room {
+    createRoom(roomName: string, playerName: string, playerId: string, maxPlayers: number = 2, isPrivate: boolean = false, password?: string, maxScore?: number, gameType: string = 'truco'): Room {
+        // Validate game type
+        if (!isValidGameType(gameType)) {
+            throw new Error(`Invalid game type: ${gameType}`);
+        }
+
         const roomId = generateId();
-        const game = this.gameService.createGame(maxScore);
+        const factory = getGameFactory(gameType as any);
+        
+        // Use factory to get appropriate max players and score
+        const finalMaxPlayers = Math.min(maxPlayers, factory.getMaxPlayers());
+        const finalMaxScore = maxScore || factory.getDefaultMaxScore();
+        
+        const game = this.gameService.createGame(finalMaxScore, gameType);
 
         // Add the creator as the first player
         const updatedGame = this.gameService.addPlayerToGame(game.id, playerId, playerName, Team.TEAM_1);
@@ -34,13 +47,14 @@ export class RoomService {
             id: roomId,
             name: roomName,
             game: updatedGame,
-            maxPlayers: 2, // Force to 2 players
+            maxPlayers: finalMaxPlayers,
             isActive: false,
             connections: new Map(),
             createdAt: new Date(),
             isPrivate,
             ...(isPrivate && password && { password }),
-            maxScore,
+            maxScore: finalMaxScore,
+            gameType,
         };
 
         this.rooms.set(roomId, room);
@@ -273,6 +287,7 @@ export class RoomService {
             game: room.game,
             isPrivate: room.isPrivate,
             maxScore: room.maxScore,
+            gameType: room.gameType,
         };
     }
 }

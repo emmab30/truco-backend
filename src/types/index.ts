@@ -99,6 +99,7 @@ export interface Room {
     isPrivate: boolean;
     password?: string;
     maxScore: number; // 15 or 30 points
+    gameType: string; // 'truco', 'chinchon', etc.
 }
 
 // ============================================================================
@@ -218,6 +219,7 @@ export interface CreateRoomRequest {
     isPrivate?: boolean;
     password?: string;
     maxScore?: number; // 15 or 30 points
+    gameType?: string; // 'truco', 'chinchon', etc.
 }
 
 export interface JoinRoomRequest {
@@ -267,6 +269,7 @@ export interface RoomResponse {
     game: Game;
     isPrivate: boolean;
     maxScore: number;
+    gameType: string;
 }
 
 export interface GameResponse {
