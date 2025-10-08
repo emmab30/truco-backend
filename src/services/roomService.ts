@@ -1,6 +1,7 @@
 import { Room } from "../types";
 import { RoomResponse, Team } from "../game/truco/types";
 import { TrucoGameService } from "./trucoGameService";
+import { ChinchonGameService } from "./chinchonGameService";
 import { generateId } from "../utils";
 import { getGameFactory, isValidGameType } from "../game/gameFactory";
 import { GameType } from "../constants";
@@ -13,7 +14,21 @@ export class RoomService {
     private rooms: Map<string, Room> = new Map();
     private playerRooms: Map<string, string> = new Map(); // playerId -> roomId
 
-    constructor(private trucoGameService: TrucoGameService) {}
+    constructor(private trucoGameService: TrucoGameService, private chinchonGameService: ChinchonGameService) {}
+
+    /**
+     * Get the appropriate game service based on game type
+     */
+    private getGameService(gameType: string): any {
+        switch (gameType) {
+            case GameType.TRUCO:
+                return this.trucoGameService;
+            case GameType.CHINCHON:
+                return this.chinchonGameService;
+            default:
+                return this.trucoGameService; // Default to Truco
+        }
+    }
 
     /**
      * Create a new room
@@ -40,10 +55,12 @@ export class RoomService {
         const finalMaxPlayers = Math.min(maxPlayers, factory.getMaxPlayers());
         const finalMaxScore = maxScore || factory.getDefaultMaxScore();
         
-        const game = this.trucoGameService.createGame(finalMaxScore, gameType);
+        // Get the appropriate game service based on game type
+        const gameService = this.getGameService(gameType);
+        const game = gameService.createGame(finalMaxScore, gameType);
 
         // Add the creator as the first player
-        const updatedGame = this.trucoGameService.addPlayerToGame(game.id, playerId, playerName, Team.TEAM_1);
+        const updatedGame = gameService.addPlayerToGame(game.id, playerId, playerName, Team.TEAM_1);
 
         const room: Room = {
             id: roomId,
@@ -89,7 +106,8 @@ export class RoomService {
 
         // Add player to game
         const team = room.game.players.length % 2;
-        const updatedGame = this.trucoGameService.addPlayerToGame(room.game.id, playerId, playerName, team);
+        const gameService = this.getGameService(room.gameType);
+        const updatedGame = gameService.addPlayerToGame(room.game.id, playerId, playerName, team);
 
         room.game = updatedGame;
         this.playerRooms.set(playerId, roomId);
@@ -137,7 +155,8 @@ export class RoomService {
         // Add player to the room
         const playerName = `Player-${playerId.slice(-6)}`; // Generate a name from player ID
         const team = room.game.players.length % 2;
-        const updatedGame = this.trucoGameService.addPlayerToGame(room.game.id, playerId, playerName, team);
+        const gameService = this.getGameService(room.gameType);
+        const updatedGame = gameService.addPlayerToGame(room.game.id, playerId, playerName, team);
 
         room.game = updatedGame;
         this.playerRooms.set(playerId, roomId);
@@ -177,7 +196,8 @@ export class RoomService {
          if (willBeEmpty || willHaveOnlyOnePlayer) {
              console.log(`🗑️ Room deleted: ${roomId} (insufficient players)`);
              this.rooms.delete(roomId);
-             this.trucoGameService.deleteGame(room.game.id);
+             const gameService = this.getGameService(room.gameType);
+             gameService.deleteGame(room.game.id);
          }
 
         return true;

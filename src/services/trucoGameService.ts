@@ -218,7 +218,7 @@ export class TrucoGameService extends BaseGameService {
       throw new Error('Game not found');
     }
 
-    const playersWithActions = game.players.map(player => ({
+    const playersWithActions = game.players.map((player: any) => ({
       ...player,
       availableActions: getAvailableActions(game, player.id)
     }));

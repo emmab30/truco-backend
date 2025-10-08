@@ -1,9 +1,11 @@
 import { WebSocketMessage } from "../types";
 import { WEBSOCKET_MESSAGE_TYPES, GameType } from "../constants";
 import { TrucoGameService } from "./trucoGameService";
+import { ChinchonGameService } from "./chinchonGameService";
 import { RoomService } from "./roomService";
 import { GameHandlerRegistry } from "../game/handlers/GameHandlerRegistry";
 import { TrucoGameHandler } from "../game/handlers/TrucoGameHandler";
+import { ChinchonGameHandler } from "../game/handlers/ChinchonGameHandler";
 
 /**
  * WebSocket Service
@@ -13,13 +15,32 @@ export class WebSocketService {
     private playerConnections: Map<string, any> = new Map(); // playerId -> WebSocket
     private gameHandlerRegistry: GameHandlerRegistry;
 
-    constructor(private trucoGameService: TrucoGameService, private roomService: RoomService) {
+    constructor(private trucoGameService: TrucoGameService, private chinchonGameService: ChinchonGameService, private roomService: RoomService) {
+        // chinchonGameService is used indirectly through the ChinchonGameHandler
         // Initialize game handler registry
         this.gameHandlerRegistry = new GameHandlerRegistry();
 
         // Register Truco game handler
         const trucoHandler = new TrucoGameHandler(trucoGameService, roomService, this);
         this.gameHandlerRegistry.registerHandler(GameType.TRUCO, trucoHandler);
+
+        // Register Chinchón game handler
+        const chinchonHandler = new ChinchonGameHandler(this.chinchonGameService, roomService, this);
+        this.gameHandlerRegistry.registerHandler(GameType.CHINCHON, chinchonHandler);
+    }
+
+    /**
+     * Get the appropriate game service based on game type
+     */
+    private getGameService(gameType: string): any {
+        switch (gameType) {
+            case GameType.TRUCO:
+                return this.trucoGameService;
+            case GameType.CHINCHON:
+                return this.chinchonGameService;
+            default:
+                return this.trucoGameService; // Default to Truco
+        }
     }
 
     /**
@@ -184,7 +205,7 @@ export class WebSocketService {
                                 playerId,
                                 playerName,
                                 message: disconnectMessage,
-                                game: this.trucoGameService.getGameWithActions(room.game.id),
+                                game: this.getGameService(room.gameType).getGameWithActions(room.game.id),
                             },
                         });
                     }
@@ -227,11 +248,14 @@ export class WebSocketService {
             this.playerConnections.set(playerId, ws);
             this.roomService.addConnection(room.id, playerId, ws);
 
+            // Get the appropriate game service based on game type
+            const gameService = this.getGameService(room.gameType);
+            
             this.sendMessage(ws, {
                 type: WEBSOCKET_MESSAGE_TYPES.ROOM_CREATED,
                 data: {
                     room: this.roomToResponse(room),
-                    game: this.trucoGameService.getGameWithActions(room.game.id),
+                    game: gameService.getGameWithActions(room.game.id),
                 },
             });
 
@@ -240,6 +264,7 @@ export class WebSocketService {
                 data: { rooms: this.roomService.getAllRooms() },
             });
         } catch (error) {
+            console.log(`Error!`, error);
             this.sendError(ws, "Error creating room");
         }
     }
@@ -268,7 +293,7 @@ export class WebSocketService {
                 type: WEBSOCKET_MESSAGE_TYPES.PLAYER_JOINED,
                 data: {
                     player: { id: playerId, name: playerName },
-                    game: this.trucoGameService.getGameWithActions(room.game.id),
+                    game: this.getGameService(room.gameType).getGameWithActions(room.game.id),
                 },
             });
 
@@ -277,14 +302,15 @@ export class WebSocketService {
                 type: WEBSOCKET_MESSAGE_TYPES.ROOM_JOINED,
                 data: {
                     room: this.roomToResponse(room),
-                    game: this.trucoGameService.getGameWithActions(room.game.id),
+                    game: this.getGameService(room.gameType).getGameWithActions(room.game.id),
                 },
             });
 
             // Check if we have enough players to start the game
             if (room.game.players.length >= 2 && !room.isActive) {
-                const startedGame = this.trucoGameService.startGame(room.game.id);
-                const gameWithHand = this.trucoGameService.dealNewHand(startedGame.id);
+                const gameService = this.getGameService(room.gameType);
+                const startedGame = gameService.startGame(room.game.id);
+                const gameWithHand = gameService.dealNewHand(startedGame.id);
                 this.roomService.updateRoomGame(roomId, gameWithHand);
                 this.roomService.setRoomActive(roomId, true);
 
@@ -296,7 +322,7 @@ export class WebSocketService {
                     type: WEBSOCKET_MESSAGE_TYPES.GAME_STARTED,
                     data: {
                         room: this.roomToResponse(room),
-                        game: this.trucoGameService.getGameWithActions(gameWithHand.id),
+                        game: gameService.getGameWithActions(gameWithHand.id),
                     },
                 });
             }
@@ -353,14 +379,15 @@ export class WebSocketService {
                     type: WEBSOCKET_MESSAGE_TYPES.PLAYER_JOINED,
                     data: {
                         player: { id: playerId, name: `Player-${playerId.slice(-6)}` },
-                        game: this.trucoGameService.getGameWithActions(room.game.id),
+                        game: this.getGameService(room.gameType).getGameWithActions(room.game.id),
                     },
                 });
 
                 // Check if we have enough players to start the game
                 if (room.game.players.length >= 2 && !room.isActive) {
-                    const startedGame = this.trucoGameService.startGame(room.game.id);
-                    const gameWithHand = this.trucoGameService.dealNewHand(startedGame.id);
+                    const gameService = this.getGameService(room.gameType);
+                    const startedGame = gameService.startGame(room.game.id);
+                    const gameWithHand = gameService.dealNewHand(startedGame.id);
                     this.roomService.updateRoomGame(roomId, gameWithHand);
                     this.roomService.setRoomActive(roomId, true);
 
@@ -372,7 +399,7 @@ export class WebSocketService {
                         type: WEBSOCKET_MESSAGE_TYPES.GAME_STARTED,
                         data: {
                             room: this.roomToResponse(room),
-                            game: this.trucoGameService.getGameWithActions(gameWithHand.id),
+                            game: gameService.getGameWithActions(gameWithHand.id),
                         },
                     });
                 }
@@ -383,7 +410,7 @@ export class WebSocketService {
                 type: WEBSOCKET_MESSAGE_TYPES.ROOM_JOINED,
                 data: {
                     room: this.roomToResponse(room),
-                    game: room.game ? this.trucoGameService.getGameWithActions(room.game.id) : null,
+                    game: room.game ? this.getGameService(room.gameType).getGameWithActions(room.game.id) : null,
                 },
             });
         } catch (error) {

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { TrucoGameService } from "../services/trucoGameService";
+import { ChinchonGameService } from "../services/chinchonGameService";
 import { RoomService } from "../services/roomService";
 import { ApiResponse } from "../types";
 import { RoomResponse, GameResponse } from "../game/truco/types";
@@ -10,7 +11,8 @@ const router = Router();
 
 // Initialize services
 const trucoGameService = new TrucoGameService();
-const roomService = new RoomService(trucoGameService);
+const chinchonGameService = new ChinchonGameService();
+const roomService = new RoomService(trucoGameService, chinchonGameService);
 
 // ============================================================================
 // AUTH ROUTES

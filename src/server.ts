@@ -11,6 +11,7 @@ import { WebSocketServer } from "ws";
 import { SERVER_CONFIG } from "./constants";
 import { WebSocketService } from "./services/websocketService";
 import { TrucoGameService } from "./services/trucoGameService";
+import { ChinchonGameService } from "./services/chinchonGameService";
 import { RoomService } from "./services/roomService";
 import { apiRoutes } from "./routes/api";
 
@@ -55,8 +56,9 @@ const wss = new WebSocketServer({
 
 // Initialize services
 const trucoGameService = new TrucoGameService();
-const roomService = new RoomService(trucoGameService);
-const wsService = new WebSocketService(trucoGameService, roomService);
+const chinchonGameService = new ChinchonGameService();
+const roomService = new RoomService(trucoGameService, chinchonGameService);
+const wsService = new WebSocketService(trucoGameService, chinchonGameService, roomService);
 
 // WebSocket connection handling
 wss.on("connection", (ws) => {

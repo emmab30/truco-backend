@@ -1,4 +1,3 @@
-import { Game } from "../game/truco/types";
 import { createGameByType } from "../game/gameFactory";
 
 /**
@@ -6,7 +5,7 @@ import { createGameByType } from "../game/gameFactory";
  * Handles common game operations that are shared across all game types
  */
 export abstract class BaseGameService {
-    protected games: Map<string, Game> = new Map();
+    protected games: Map<string, any> = new Map();
 
     /**
      * Create a new game
@@ -14,7 +13,7 @@ export abstract class BaseGameService {
      * @param gameType - Type of game ('truco', 'chinchon', etc.)
      * @returns New game object
      */
-    createGame(maxScore: number = 15, gameType: string = 'truco'): Game {
+    createGame(maxScore: number = 15, gameType: string = 'truco'): any {
         const game = createGameByType(gameType as any, maxScore);
         this.games.set(game.id, game);
         return game;
@@ -25,7 +24,7 @@ export abstract class BaseGameService {
      * @param gameId - Game ID
      * @returns Game object or undefined
      */
-    getGame(gameId: string): Game | undefined {
+    getGame(gameId: string): any | undefined {
         return this.games.get(gameId);
     }
 
@@ -33,7 +32,7 @@ export abstract class BaseGameService {
      * Update a game
      * @param game - Updated game object
      */
-    updateGame(game: Game): void {
+    updateGame(game: any): void {
         this.games.set(game.id, game);
     }
 
@@ -49,7 +48,7 @@ export abstract class BaseGameService {
      * Get all games
      * @returns Array of all games
      */
-    getAllGames(): Game[] {
+    getAllGames(): any[] {
         return Array.from(this.games.values());
     }
 
