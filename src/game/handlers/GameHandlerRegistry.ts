@@ -14,7 +14,7 @@ export class GameHandlerRegistry {
      */
     registerHandler(gameType: string, handler: BaseGameHandler): void {
         this.handlers.set(gameType, handler);
-        console.log(`Registered handler for game type: ${gameType}`);
+        // Handler registered for game type: ${gameType}
     }
 
     /**
@@ -74,7 +74,7 @@ export class GameHandlerRegistry {
      */
     unregisterHandler(gameType: string): void {
         if (this.handlers.delete(gameType)) {
-            console.log(`Unregistered handler for game type: ${gameType}`);
+            // Handler unregistered for game type: ${gameType}
         }
     }
 
@@ -83,7 +83,7 @@ export class GameHandlerRegistry {
      */
     clear(): void {
         this.handlers.clear();
-        console.log("Cleared all game handlers");
+        // All game handlers cleared
     }
 
     /**

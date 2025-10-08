@@ -345,9 +345,9 @@ export function playCard(game: Game, playerId: string, cardId: string): Game {
 
         if (roundWinner) {
             const winnerPlayer = updatedPlayers.find((p) => p.id === roundWinner);
-            console.log(`🏆 ¡${winnerPlayer?.name} ganó la ronda ${game.currentHand!.currentRound + 1}!`);
+            console.log(`🏆 Round ${game.currentHand!.currentRound + 1} won by: ${winnerPlayer?.name}`);
         } else {
-            console.log(`🤝 Ronda ${game.currentHand!.currentRound + 1} es parda`);
+            console.log(`🤝 Round ${game.currentHand!.currentRound + 1} tied`);
         }
 
         // Check if hand is complete
@@ -371,8 +371,7 @@ export function playCard(game: Game, playerId: string, cardId: string): Game {
 
             const finalPlayers = updatedPlayers.map((player) => (player.team === winningTeam ? { ...player, points: player.points + pointsToAdd } : player));
 
-            console.log(`🎉 ¡MANO COMPLETADA! Mano #${game.currentHand!.number}`);
-            console.log(`🏆 ¡${handWinnerName} ganó la mano! (+${pointsToAdd} punto)`);
+            console.log(`🎉 Hand completed! #${game.currentHand!.number} | Winner: ${handWinnerName} | Points: +${pointsToAdd}`);
 
             return {
                 ...game,

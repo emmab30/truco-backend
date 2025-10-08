@@ -35,7 +35,7 @@ export class WebSocketService {
             // Check if this player already has a connection (reconnection case)
             const existingConnection = this.playerConnections.get(playerId);
             if (existingConnection && existingConnection !== ws) {
-                console.log("Player reconnecting with same ID:", playerId);
+                console.log(`🔄 Player reconnecting: ${playerId}`);
                 // Close the old connection
                 if (existingConnection.readyState === 1) {
                     existingConnection.close();
@@ -161,7 +161,7 @@ export class WebSocketService {
         // Find player by WebSocket connection
         for (const [playerId, connection] of this.playerConnections.entries()) {
             if (connection === ws) {
-                console.log("Player disconnected:", playerId);
+                console.log(`👋 Player disconnected: ${playerId}`);
                 this.playerConnections.delete(playerId);
 
                 // Get the room the player was in before removing them
@@ -194,7 +194,7 @@ export class WebSocketService {
 
                     // Update room list for everyone
                     const allRooms = this.roomService.getAllRooms();
-                    console.log("Broadcasting updated room list:", allRooms.length, "rooms");
+                    console.log(`📡 Broadcasting room list: ${allRooms.length} rooms`);
                     this.broadcastToAll({
                         type: WEBSOCKET_MESSAGE_TYPES.ROOM_LIST_UPDATED,
                         data: { rooms: allRooms },

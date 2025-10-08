@@ -60,7 +60,7 @@ const wsService = new WebSocketService(trucoGameService, roomService);
 
 // WebSocket connection handling
 wss.on("connection", (ws) => {
-    console.log("New WebSocket connection");
+    // New WebSocket connection established
 
     ws.on("message", (data) => {
         try {
@@ -78,7 +78,7 @@ wss.on("connection", (ws) => {
     });
 
     ws.on("close", () => {
-        console.log("WebSocket connection closed");
+        // WebSocket connection closed
         wsService.handleDisconnect(ws);
     });
 
@@ -95,9 +95,10 @@ const PORT = SERVER_CONFIG.port;
 const HOST = SERVER_CONFIG.host;
 
 server.listen(PORT, HOST, () => {
-    console.log(`🚀 Server running on http://${HOST}:${PORT}`);
-    console.log(`🚀 WebSocket server running on ws://${HOST}:${PORT}/ws`);
-    console.log(`🚀 CORS enabled for: ${SERVER_CONFIG.corsOrigin}`);
+    console.log(`🚀 Server started successfully!`);
+    console.log(`   📡 HTTP: http://${HOST}:${PORT}`);
+    console.log(`   🔌 WebSocket: ws://${HOST}:${PORT}/ws`);
+    console.log(`   🌐 CORS: ${SERVER_CONFIG.corsOrigin}`);
 });
 
 // Graceful shutdown

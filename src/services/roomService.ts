@@ -63,7 +63,7 @@ export class RoomService {
         this.playerRooms.set(playerId, roomId);
 
         // Log room creation
-        console.log(`🏠 Room created: "${roomName}" by ${playerName} (${playerId}) - Game: ${gameType} - ${isPrivate ? 'Private' : 'Public'} - Max Players: ${finalMaxPlayers} - Max Score: ${finalMaxScore}`);
+        console.log(`🏠 Room created: "${roomName}" | Game: ${gameType} | Players: ${finalMaxPlayers} | Score: ${finalMaxScore} | ${isPrivate ? 'Private' : 'Public'}`);
 
         return room;
     }
@@ -107,13 +107,11 @@ export class RoomService {
     joinRoomById(roomId: string, playerId: string, password?: string): Room | null {
         const room = this.rooms.get(roomId);
         if (!room) {
-            console.log(`Room ${roomId} not found`);
             return null;
         }
 
         // Check if room has a game
         if (!room.game) {
-            console.log(`Room ${roomId} has no game`);
             return null;
         }
 
@@ -122,19 +120,17 @@ export class RoomService {
         if (existingPlayer) {
             // Player is already in the room, just update mapping
             this.playerRooms.set(playerId, roomId);
-            console.log(`Player ${playerId} successfully reconnected to room ${roomId}`);
+            console.log(`🔄 Player reconnected to room: ${roomId}`);
             return room;
         }
 
         // Player is not in the room, check if we can add them
         if (room.game.players.length >= room.maxPlayers) {
-            console.log(`Room ${roomId} is full`);
             return null;
         }
 
         // Check password for private rooms
         if (room.isPrivate && room.password && room.password !== password) {
-            console.log(`Invalid password for private room ${roomId}`);
             return null;
         }
 
@@ -146,7 +142,7 @@ export class RoomService {
         room.game = updatedGame;
         this.playerRooms.set(playerId, roomId);
 
-        console.log(`Player ${playerId} successfully joined room ${roomId} via direct link`);
+        console.log(`👥 Player joined room: ${roomId} | Players: ${room.game.players.length}/${room.maxPlayers}`);
         return room;
     }
 
@@ -179,7 +175,7 @@ export class RoomService {
 
          // If room is now empty OR has only one player left (can't play alone), delete it
          if (willBeEmpty || willHaveOnlyOnePlayer) {
-             console.log("Deleting room (empty or only one player):", roomId);
+             console.log(`🗑️ Room deleted: ${roomId} (insufficient players)`);
              this.rooms.delete(roomId);
              this.trucoGameService.deleteGame(room.game.id);
          }
@@ -211,7 +207,7 @@ export class RoomService {
      * @returns Room or null
      */
     getRoomByPlayer(playerId: string): Room | null {
-        console.log(`Player rooms`, this.playerRooms);
+        console.log(`📊 Active rooms: ${this.rooms.size} | Connected players: ${this.playerRooms.size}`);
         const roomId = this.playerRooms.get(playerId);
         if (!roomId) return null;
         return this.getRoom(roomId);
