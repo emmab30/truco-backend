@@ -96,8 +96,8 @@ const HOST = SERVER_CONFIG.host;
 
 server.listen(PORT, HOST, () => {
     console.log(`🚀 Server running on http://${HOST}:${PORT}`);
-    console.log(`🔌 WebSocket server running on ws://${HOST}:${PORT}/ws`);
-    console.log(`🌐 CORS enabled for: ${SERVER_CONFIG.corsOrigin}`);
+    console.log(`🚀 WebSocket server running on ws://${HOST}:${PORT}/ws`);
+    console.log(`🚀 CORS enabled for: ${SERVER_CONFIG.corsOrigin}`);
 });
 
 // Graceful shutdown
