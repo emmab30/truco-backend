@@ -1,8 +1,8 @@
-import { Game } from "../types";
-import { createGame as createTrucoGame } from "./gameLogic";
+import { Game } from "./truco/types";
+import { createGame as createTrucoGame } from "./truco/gameLogic";
+import { GameType } from "../constants";
 
-// Game type definitions
-export type GameType = 'truco' | 'chinchon' | 'poker';
+// Game type definitions - now using enum from constants
 
 // Game factory interface
 export interface GameFactory {
@@ -17,7 +17,7 @@ export interface GameFactory {
 // Truco game factory
 export class TrucoGameFactory implements GameFactory {
     getGameType(): GameType {
-        return 'truco';
+        return GameType.TRUCO;
     }
 
     getMaxPlayers(): number {
@@ -50,7 +50,7 @@ export class TrucoGameFactory implements GameFactory {
 // Chinchon game factory (placeholder for future implementation)
 export class ChinchonGameFactory implements GameFactory {
     getGameType(): GameType {
-        return 'chinchon';
+        return GameType.CHINCHON;
     }
 
     getMaxPlayers(): number {
@@ -99,8 +99,8 @@ export class ChinchonGameFactory implements GameFactory {
 
 // Game factory registry
 const gameFactories: Map<GameType, GameFactory> = new Map([
-    ['truco', new TrucoGameFactory()],
-    ['chinchon', new ChinchonGameFactory()],
+    [GameType.TRUCO, new TrucoGameFactory()],
+    [GameType.CHINCHON, new ChinchonGameFactory()],
 ]);
 
 // Factory function to create games

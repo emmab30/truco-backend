@@ -1,62 +1,36 @@
-import { 
-  Game, 
-  Team, 
-  EnvidoCall, 
-  TrucoCall, 
-  EnvidoResponse, 
-  TrucoResponse,
-  GameResponse
-} from '../types';
-import { 
-  addPlayer, 
-  startGame, 
-  dealNewHand, 
-  dealNewRound, 
-  playCard, 
-  callEnvido, 
-  respondEnvido, 
-  callTruco, 
-  respondTruco, 
-  goToMazo 
-} from '../game/gameLogic';
-import { createGameByType } from '../game/gameFactory';
-import { getAvailableActions } from '../game/actions';
-// generateId is not used in this file
+import {
+  Game,
+  Team,
+  GameResponse,
+  EnvidoCall,
+  TrucoCall,
+  EnvidoResponse,
+  TrucoResponse
+} from '../game/truco/types';
+import { GameType } from '../constants';
+import {
+  addPlayer,
+  startGame,
+  dealNewHand,
+  dealNewRound,
+  playCard,
+  callEnvido,
+  respondEnvido,
+  callTruco,
+  respondTruco,
+  goToMazo
+} from '../game/truco/gameLogic';
+import { getAvailableActions } from '../game/truco/actions';
+import { BaseGameService } from './baseGameService';
 
 /**
- * Game Service
- * Handles all game-related operations
+ * Truco Game Service
+ * Handles all Truco-specific game operations
  */
-export class GameService {
-  private games: Map<string, Game> = new Map();
+export class TrucoGameService extends BaseGameService {
 
-  /**
-   * Create a new game
-   * @param maxScore - Maximum score for the game (15 or 30)
-   * @param gameType - Type of game ('truco', 'chinchon', etc.)
-   * @returns New game object
-   */
-  createGame(maxScore: number = 15, gameType: string = 'truco'): Game {
-    const game = createGameByType(gameType as any, maxScore);
-    this.games.set(game.id, game);
-    return game;
-  }
-
-  /**
-   * Get a game by ID
-   * @param gameId - Game ID
-   * @returns Game object or undefined
-   */
-  getGame(gameId: string): Game | undefined {
-    return this.games.get(gameId);
-  }
-
-  /**
-   * Update a game
-   * @param game - Updated game object
-   */
-  updateGame(game: Game): void {
-    this.games.set(game.id, game);
+  getGameType(): string {
+    return GameType.TRUCO;
   }
 
   /**
@@ -259,19 +233,4 @@ export class GameService {
     };
   }
 
-  /**
-   * Get all games
-   * @returns Array of all games
-   */
-  getAllGames(): Game[] {
-    return Array.from(this.games.values());
-  }
-
-  /**
-   * Delete a game
-   * @param gameId - Game ID
-   */
-  deleteGame(gameId: string): void {
-    this.games.delete(gameId);
-  }
 }

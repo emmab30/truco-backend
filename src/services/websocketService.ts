@@ -1,18 +1,26 @@
-// WebSocketServer is not used in this file
 import { WebSocketMessage } from "../types";
-import { GAME_DELAY_NEW_HAND, WEBSOCKET_MESSAGE_TYPES } from "../constants";
-import { GameService } from "./gameService";
+import { WEBSOCKET_MESSAGE_TYPES, GameType } from "../constants";
+import { TrucoGameService } from "./trucoGameService";
 import { RoomService } from "./roomService";
-// getAvailableActions is not used in this file
+import { GameHandlerRegistry } from "../game/handlers/GameHandlerRegistry";
+import { TrucoGameHandler } from "../game/handlers/TrucoGameHandler";
 
 /**
  * WebSocket Service
- * Handles all WebSocket communication
+ * Handles all WebSocket communication and delegates game-specific events to appropriate handlers
  */
 export class WebSocketService {
     private playerConnections: Map<string, any> = new Map(); // playerId -> WebSocket
+    private gameHandlerRegistry: GameHandlerRegistry;
 
-    constructor(private gameService: GameService, private roomService: RoomService) {}
+    constructor(private trucoGameService: TrucoGameService, private roomService: RoomService) {
+        // Initialize game handler registry
+        this.gameHandlerRegistry = new GameHandlerRegistry();
+
+        // Register Truco game handler
+        const trucoHandler = new TrucoGameHandler(trucoGameService, roomService, this);
+        this.gameHandlerRegistry.registerHandler(GameType.TRUCO, trucoHandler);
+    }
 
     /**
      * Handle incoming WebSocket message
@@ -20,7 +28,7 @@ export class WebSocketService {
      * @param message - Message object
      */
     handleMessage(ws: any, message: WebSocketMessage): void {
-        const { type, data, roomId, playerId } = message;
+        const { type, roomId, playerId } = message;
 
         // Register the WebSocket connection
         if (playerId) {
@@ -41,74 +49,108 @@ export class WebSocketService {
         }
 
         try {
-            switch (type) {
-                case WEBSOCKET_MESSAGE_TYPES.REGISTER_PLAYER:
-                    this.handleRegisterPlayer(ws, data);
-                    break;
-
-                case WEBSOCKET_MESSAGE_TYPES.CREATE_ROOM:
-                    this.handleCreateRoom(ws, data);
-                    break;
-
-                case WEBSOCKET_MESSAGE_TYPES.JOIN_ROOM:
-                    this.handleJoinRoom(ws, data, roomId);
-                    break;
-
-                case WEBSOCKET_MESSAGE_TYPES.JOIN_ROOM_BY_ID:
-                    this.handleJoinRoomById(ws, data, roomId);
-                    break;
-
-                case WEBSOCKET_MESSAGE_TYPES.GET_ROOM_INFO:
-                    this.handleGetRoomInfo(ws, roomId);
-                    break;
-
-                case WEBSOCKET_MESSAGE_TYPES.LEAVE_ROOM:
-                    this.handleLeaveRoom(ws, playerId, roomId);
-                    break;
-
-                case WEBSOCKET_MESSAGE_TYPES.START_GAME:
-                    this.handleStartGame(playerId, roomId);
-                    break;
-
-                case WEBSOCKET_MESSAGE_TYPES.DEAL_NEW_HAND:
-                    this.handleDealNewHand(playerId, roomId);
-                    break;
-
-                case WEBSOCKET_MESSAGE_TYPES.PLAY_CARD:
-                    this.handlePlayCard(playerId, roomId, data);
-                    break;
-
-                case WEBSOCKET_MESSAGE_TYPES.CALL_ENVIDO:
-                    this.handleCallEnvido(playerId, roomId, data);
-                    break;
-
-                case WEBSOCKET_MESSAGE_TYPES.RESPOND_ENVIDO:
-                    this.handleRespondEnvido(playerId, roomId, data);
-                    break;
-
-                case WEBSOCKET_MESSAGE_TYPES.CALL_TRUCO:
-                    this.handleCallTruco(playerId, roomId, data);
-                    break;
-
-                case WEBSOCKET_MESSAGE_TYPES.RESPOND_TRUCO:
-                    this.handleRespondTruco(playerId, roomId, data);
-                    break;
-
-                case WEBSOCKET_MESSAGE_TYPES.GO_TO_MAZO:
-                    this.handleGoToMazo(playerId, roomId);
-                    break;
-
-                case WEBSOCKET_MESSAGE_TYPES.GET_ROOMS:
-                    this.handleGetRooms(ws, playerId);
-                    break;
-
-                default:
-                    this.sendError(ws, "Unknown message type");
-            }
+            // Handle room-related events
+            if (this.isRoomEvent(type)) this.handleRoomEvent(ws, message, roomId, playerId);
+            else this.handleGameEvent(ws, message, roomId, playerId);
         } catch (error) {
             console.error("Error handling WebSocket message:", error);
             this.sendError(ws, "Internal server error");
         }
+    }
+
+    // ============================================================================
+    // EVENT CLASSIFICATION
+    // ============================================================================
+
+    /**
+     * Check if a message type is a room-related event
+     */
+    private isRoomEvent(messageType: string): boolean {
+        const roomEvents = [
+            WEBSOCKET_MESSAGE_TYPES.REGISTER_PLAYER,
+            WEBSOCKET_MESSAGE_TYPES.CREATE_ROOM,
+            WEBSOCKET_MESSAGE_TYPES.JOIN_ROOM,
+            WEBSOCKET_MESSAGE_TYPES.JOIN_ROOM_BY_ID,
+            WEBSOCKET_MESSAGE_TYPES.GET_ROOM_INFO,
+            WEBSOCKET_MESSAGE_TYPES.LEAVE_ROOM,
+            WEBSOCKET_MESSAGE_TYPES.GET_ROOMS,
+        ];
+        return roomEvents.includes(messageType as any);
+    }
+
+    // ============================================================================
+    // ROOM EVENT HANDLERS
+    // ============================================================================
+
+    /**
+     * Handle room-related events
+     */
+    private handleRoomEvent(ws: any, message: WebSocketMessage, roomId?: string, playerId?: string): void {
+        const { type, data } = message;
+
+        switch (type) {
+            case WEBSOCKET_MESSAGE_TYPES.REGISTER_PLAYER:
+                this.handleRegisterPlayer(ws, data);
+                break;
+
+            case WEBSOCKET_MESSAGE_TYPES.CREATE_ROOM:
+                this.handleCreateRoom(ws, data);
+                break;
+
+            case WEBSOCKET_MESSAGE_TYPES.JOIN_ROOM:
+                this.handleJoinRoom(ws, data, roomId);
+                break;
+
+            case WEBSOCKET_MESSAGE_TYPES.JOIN_ROOM_BY_ID:
+                this.handleJoinRoomById(ws, data, roomId);
+                break;
+
+            case WEBSOCKET_MESSAGE_TYPES.GET_ROOM_INFO:
+                this.handleGetRoomInfo(ws, roomId);
+                break;
+
+            case WEBSOCKET_MESSAGE_TYPES.LEAVE_ROOM:
+                this.handleLeaveRoom(ws, playerId, roomId);
+                break;
+
+            case WEBSOCKET_MESSAGE_TYPES.GET_ROOMS:
+                this.handleGetRooms(ws, playerId);
+                break;
+
+            default:
+                this.sendError(ws, "Unknown room event type");
+        }
+    }
+
+    // ============================================================================
+    // GAME EVENT HANDLERS
+    // ============================================================================
+
+    /**
+     * Handle game-specific events by delegating to appropriate game handler
+     */
+    private handleGameEvent(ws: any, message: WebSocketMessage, roomId?: string, playerId?: string): void {
+        if (!roomId) {
+            this.sendError(ws, "Room ID is required for game events");
+            return;
+        }
+
+        // Get the room to determine game type
+        const room = this.roomService.getRoom(roomId);
+        if (!room) {
+            this.sendError(ws, "Room not found");
+            return;
+        }
+
+        // Get the appropriate game handler
+        const gameHandler = this.gameHandlerRegistry.getHandler(room.gameType);
+        if (!gameHandler) {
+            this.sendError(ws, `No handler found for game type: ${room.gameType}`);
+            return;
+        }
+
+        // Delegate to the game handler
+        gameHandler.handleMessage(ws, message, roomId, playerId);
     }
 
     /**
@@ -125,7 +167,7 @@ export class WebSocketService {
                 // Get the room the player was in before removing them
                 const room = this.roomService.getRoomByPlayer(playerId);
                 if (room) {
-                    const player = room.game.players.find((p) => p.id === playerId);
+                    const player = room.game.players.find((p: any) => p.id === playerId);
                     const playerName = player?.name || "Jugador desconocido";
                     const roomId = room.id;
                     const wasGameActive = room.isActive && room.game.players.length >= 2;
@@ -142,7 +184,7 @@ export class WebSocketService {
                                 playerId,
                                 playerName,
                                 message: disconnectMessage,
-                                game: this.gameService.getGameWithActions(room.game.id),
+                                game: this.trucoGameService.getGameWithActions(room.game.id),
                             },
                         });
                     }
@@ -164,7 +206,7 @@ export class WebSocketService {
     }
 
     // ============================================================================
-    // MESSAGE HANDLERS
+    // ROOM MESSAGE HANDLERS
     // ============================================================================
 
     private handleRegisterPlayer(ws: any, data: any): void {
@@ -176,7 +218,7 @@ export class WebSocketService {
     }
 
     private handleCreateRoom(ws: any, data: any): void {
-        const { roomName, playerName, playerId, maxPlayers = 2, isPrivate = false, password, maxScore = 15, gameType = 'truco' } = data;
+        const { roomName, playerName, playerId, maxPlayers = 2, isPrivate = false, password, maxScore = 15, gameType = GameType.TRUCO } = data;
 
         try {
             const room = this.roomService.createRoom(roomName, playerName, playerId, maxPlayers, isPrivate, password, maxScore, gameType);
@@ -189,7 +231,7 @@ export class WebSocketService {
                 type: WEBSOCKET_MESSAGE_TYPES.ROOM_CREATED,
                 data: {
                     room: this.roomToResponse(room),
-                    game: this.gameService.getGameWithActions(room.game.id),
+                    game: this.trucoGameService.getGameWithActions(room.game.id),
                 },
             });
 
@@ -226,7 +268,7 @@ export class WebSocketService {
                 type: WEBSOCKET_MESSAGE_TYPES.PLAYER_JOINED,
                 data: {
                     player: { id: playerId, name: playerName },
-                    game: this.gameService.getGameWithActions(room.game.id),
+                    game: this.trucoGameService.getGameWithActions(room.game.id),
                 },
             });
 
@@ -235,14 +277,14 @@ export class WebSocketService {
                 type: WEBSOCKET_MESSAGE_TYPES.ROOM_JOINED,
                 data: {
                     room: this.roomToResponse(room),
-                    game: this.gameService.getGameWithActions(room.game.id),
+                    game: this.trucoGameService.getGameWithActions(room.game.id),
                 },
             });
 
             // Check if we have enough players to start the game
             if (room.game.players.length >= 2 && !room.isActive) {
-                const startedGame = this.gameService.startGame(room.game.id);
-                const gameWithHand = this.gameService.dealNewHand(startedGame.id);
+                const startedGame = this.trucoGameService.startGame(room.game.id);
+                const gameWithHand = this.trucoGameService.dealNewHand(startedGame.id);
                 this.roomService.updateRoomGame(roomId, gameWithHand);
                 this.roomService.setRoomActive(roomId, true);
 
@@ -254,7 +296,7 @@ export class WebSocketService {
                     type: WEBSOCKET_MESSAGE_TYPES.GAME_STARTED,
                     data: {
                         room: this.roomToResponse(room),
-                        game: this.gameService.getGameWithActions(gameWithHand.id),
+                        game: this.trucoGameService.getGameWithActions(gameWithHand.id),
                     },
                 });
             }
@@ -289,11 +331,11 @@ export class WebSocketService {
 
         try {
             const { password } = data;
-            
+
             // Check if player is already in the room before joining
             const existingRoom = this.roomService.getRoom(roomId);
-            const wasAlreadyInRoom = existingRoom?.game?.players?.some(p => p.id === playerId) || false;
-            
+            const wasAlreadyInRoom = existingRoom?.game?.players?.some((p: any) => p.id === playerId) || false;
+
             const room = this.roomService.joinRoomById(roomId, playerId, password);
             if (!room) {
                 this.sendError(ws, "Room not found, room is full, or invalid password");
@@ -311,14 +353,14 @@ export class WebSocketService {
                     type: WEBSOCKET_MESSAGE_TYPES.PLAYER_JOINED,
                     data: {
                         player: { id: playerId, name: `Player-${playerId.slice(-6)}` },
-                        game: this.gameService.getGameWithActions(room.game.id),
+                        game: this.trucoGameService.getGameWithActions(room.game.id),
                     },
                 });
 
                 // Check if we have enough players to start the game
                 if (room.game.players.length >= 2 && !room.isActive) {
-                    const startedGame = this.gameService.startGame(room.game.id);
-                    const gameWithHand = this.gameService.dealNewHand(startedGame.id);
+                    const startedGame = this.trucoGameService.startGame(room.game.id);
+                    const gameWithHand = this.trucoGameService.dealNewHand(startedGame.id);
                     this.roomService.updateRoomGame(roomId, gameWithHand);
                     this.roomService.setRoomActive(roomId, true);
 
@@ -330,7 +372,7 @@ export class WebSocketService {
                         type: WEBSOCKET_MESSAGE_TYPES.GAME_STARTED,
                         data: {
                             room: this.roomToResponse(room),
-                            game: this.gameService.getGameWithActions(gameWithHand.id),
+                            game: this.trucoGameService.getGameWithActions(gameWithHand.id),
                         },
                     });
                 }
@@ -341,10 +383,9 @@ export class WebSocketService {
                 type: WEBSOCKET_MESSAGE_TYPES.ROOM_JOINED,
                 data: {
                     room: this.roomToResponse(room),
-                    game: room.game ? this.gameService.getGameWithActions(room.game.id) : null,
+                    game: room.game ? this.trucoGameService.getGameWithActions(room.game.id) : null,
                 },
             });
-
         } catch (error) {
             console.error("Error in handleJoinRoomById:", error);
             this.sendError(ws, "Internal server error");
@@ -381,11 +422,10 @@ export class WebSocketService {
                         isActive: room.isActive,
                         isPrivate: room.isPrivate,
                         maxScore: room.maxScore,
-                        createdAt: room.createdAt
-                    }
+                        createdAt: room.createdAt,
+                    },
                 },
             });
-
         } catch (error) {
             console.error("Error in handleGetRoomInfo:", error);
             this.sendError(ws, "Internal server error");
@@ -399,282 +439,6 @@ export class WebSocketService {
                 type: WEBSOCKET_MESSAGE_TYPES.ROOM_LIST_UPDATED,
                 data: { rooms: this.roomService.getAllRooms() },
             });
-        }
-    }
-
-    private handleStartGame(_playerId?: string, roomId?: string): void {
-        if (!roomId) return;
-
-        try {
-            const room = this.roomService.getRoom(roomId);
-            if (!room) return;
-
-            const startedGame = this.gameService.startGame(room.game.id);
-            this.roomService.updateRoomGame(roomId, startedGame);
-            this.roomService.setRoomActive(roomId, true);
-
-            this.broadcastToRoom(roomId, {
-                type: WEBSOCKET_MESSAGE_TYPES.GAME_STARTED,
-                data: {
-                    room: this.roomToResponse(room),
-                    game: this.gameService.getGameWithActions(startedGame.id),
-                },
-            });
-        } catch (error) {
-            console.error("Error starting game:", error);
-        }
-    }
-
-    private handleDealNewHand(_playerId?: string, roomId?: string): void {
-        if (!roomId) return;
-
-        try {
-            const room = this.roomService.getRoom(roomId);
-            if (!room) return;
-
-            const newHandGame = this.gameService.dealNewHand(room.game.id);
-            this.roomService.updateRoomGame(roomId, newHandGame);
-
-            this.broadcastToRoom(roomId, {
-                type: WEBSOCKET_MESSAGE_TYPES.NEW_HAND_DEALT,
-                data: { game: this.gameService.getGameWithActions(newHandGame.id) },
-            });
-        } catch (error) {
-            console.error("Error dealing new hand:", error);
-        }
-    }
-
-    private handlePlayCard(playerId?: string, roomId?: string, data?: any): void {
-        if (!roomId || !playerId || !data?.cardId) return;
-
-        try {
-            const room = this.roomService.getRoom(roomId);
-            if (!room) return;
-
-            const updatedGame = this.gameService.playCard(room.game.id, playerId, data.cardId);
-            this.roomService.updateRoomGame(roomId, updatedGame);
-
-            this.broadcastToRoom(roomId, {
-                type: WEBSOCKET_MESSAGE_TYPES.CARD_PLAYED,
-                data: {
-                    playerId,
-                    cardId: data.cardId,
-                    game: this.gameService.getGameWithActions(updatedGame.id),
-                },
-            });
-
-            // Handle automatic round/hand progression
-            this.handleGameProgression(roomId, updatedGame);
-        } catch (error) {
-            console.error("Error playing card:", error);
-        }
-    }
-
-    private handleCallEnvido(playerId?: string, roomId?: string, data?: any): void {
-        if (!roomId || !playerId || !data?.call) return;
-
-        try {
-            const room = this.roomService.getRoom(roomId);
-            if (!room) return;
-
-            const updatedGame = this.gameService.callEnvido(room.game.id, playerId, data.call);
-            this.roomService.updateRoomGame(roomId, updatedGame);
-
-            // Send speech bubble for envido call
-            const player = updatedGame.players.find((p) => p.id === playerId);
-            if (player) {
-                const callLabels = {
-                    envido: "Envido",
-                    "real-envido": "Real Envido",
-                    "falta-envido": "Falta Envido",
-                };
-                this.sendSpeechBubble(roomId, playerId, callLabels[data.call as keyof typeof callLabels] || data.call, player.name, 5);
-            }
-
-            this.broadcastToRoom(roomId, {
-                type: WEBSOCKET_MESSAGE_TYPES.ENVIDO_CALLED,
-                data: {
-                    playerId,
-                    call: data.call,
-                    game: this.gameService.getGameWithActions(updatedGame.id),
-                },
-            });
-        } catch (error) {
-            console.error("Error calling envido:", error);
-        }
-    }
-
-    private handleRespondEnvido(playerId?: string, roomId?: string, data?: any): void {
-        if (!roomId || !playerId || !data?.response) return;
-
-        try {
-            const room = this.roomService.getRoom(roomId);
-            if (!room) return;
-
-            const updatedGame = this.gameService.respondEnvido(room.game.id, playerId, data.response);
-            this.roomService.updateRoomGame(roomId, updatedGame);
-
-            // Send speech bubble for envido response (if not quiero)
-            if (data.response !== "quiero") {
-                const player = updatedGame.players.find((p) => p.id === playerId);
-                if (player) {
-                    const responseLabels = {
-                        "no-quiero": "No quiero",
-                        envido: "Envido",
-                        "real-envido": "Real Envido",
-                        "falta-envido": "Falta Envido",
-                    };
-                    this.sendSpeechBubble(roomId, playerId, responseLabels[data.response as keyof typeof responseLabels] || data.response, player.name, 5);
-                }
-            }
-
-            // Check if envido was resolved (quiero response)
-            const envidoState = updatedGame.currentHand?.envidoState;
-            const isResolved = data.response === "quiero" && envidoState?.callerMessage && envidoState?.responderMessage;
-
-            if (isResolved) {
-                // Send speech bubbles for both players
-                const caller = updatedGame.players.find((p) => p.id === envidoState.currentCaller);
-                const responder = updatedGame.players.find((p) => p.id === playerId);
-
-                if (caller && responder) {
-                    // Send speech bubble for caller (high priority for envido points)
-                    this.broadcastToRoom(roomId, {
-                        type: WEBSOCKET_MESSAGE_TYPES.SPEECH_BUBBLE,
-                        data: {
-                            playerId: caller.id,
-                            message: envidoState.callerMessage,
-                            playerName: caller.name,
-                            priority: 10,
-                        },
-                    });
-
-                    // Send speech bubble for responder (high priority for envido points)
-                    this.broadcastToRoom(roomId, {
-                        type: WEBSOCKET_MESSAGE_TYPES.SPEECH_BUBBLE,
-                        data: {
-                            playerId: responder.id,
-                            message: envidoState.responderMessage,
-                            playerName: responder.name,
-                            priority: 10,
-                        },
-                    });
-                }
-            }
-
-            this.broadcastToRoom(roomId, {
-                type: WEBSOCKET_MESSAGE_TYPES.ENVIDO_RESPONDED,
-                data: {
-                    playerId,
-                    response: data.response,
-                    game: this.gameService.getGameWithActions(updatedGame.id),
-                },
-            });
-        } catch (error) {
-            console.error("Error responding to envido:", error);
-        }
-    }
-
-    private handleCallTruco(playerId?: string, roomId?: string, data?: any): void {
-        if (!roomId || !playerId || !data?.call) return;
-
-        try {
-            const room = this.roomService.getRoom(roomId);
-            if (!room) return;
-
-            const updatedGame = this.gameService.callTruco(room.game.id, playerId, data.call);
-            this.roomService.updateRoomGame(roomId, updatedGame);
-
-            // Send speech bubble for truco call
-            const player = updatedGame.players.find((p) => p.id === playerId);
-            if (player) {
-                const callLabels = {
-                    truco: "Truco",
-                    retruco: "Re Truco",
-                    "vale-cuatro": "Vale Cuatro",
-                };
-                this.sendSpeechBubble(roomId, playerId, callLabels[data.call as keyof typeof callLabels] || data.call, player.name, 5);
-            }
-
-            this.broadcastToRoom(roomId, {
-                type: WEBSOCKET_MESSAGE_TYPES.TRUCO_CALLED,
-                data: {
-                    playerId,
-                    call: data.call,
-                    game: this.gameService.getGameWithActions(updatedGame.id),
-                },
-            });
-        } catch (error) {
-            console.error("Error calling truco:", error);
-        }
-    }
-
-    private handleRespondTruco(playerId?: string, roomId?: string, data?: any): void {
-        if (!roomId || !playerId || !data?.response) return;
-
-        try {
-            const room = this.roomService.getRoom(roomId);
-            if (!room) return;
-
-            const updatedGame = this.gameService.respondTruco(room.game.id, playerId, data.response);
-            this.roomService.updateRoomGame(roomId, updatedGame);
-
-            // Send speech bubble for truco response
-            const player = updatedGame.players.find((p) => p.id === playerId);
-            if (player) {
-                const responseLabels = {
-                    quiero: "Quiero",
-                    "no-quiero": "No quiero",
-                    "quiero-retruco": "Quiero Re Truco",
-                    "quiero-vale-cuatro": "Quiero Vale Cuatro",
-                };
-                this.sendSpeechBubble(roomId, playerId, responseLabels[data.response as keyof typeof responseLabels] || data.response, player.name, 5);
-            }
-
-            this.broadcastToRoom(roomId, {
-                type: WEBSOCKET_MESSAGE_TYPES.TRUCO_RESPONDED,
-                data: {
-                    playerId,
-                    response: data.response,
-                    game: this.gameService.getGameWithActions(updatedGame.id),
-                },
-            });
-
-            // Handle automatic hand progression if hand ended
-            this.handleGameProgression(roomId, updatedGame);
-        } catch (error) {
-            console.error("Error responding to truco:", error);
-        }
-    }
-
-    private handleGoToMazo(playerId?: string, roomId?: string): void {
-        if (!roomId || !playerId) return;
-
-        try {
-            const room = this.roomService.getRoom(roomId);
-            if (!room) return;
-
-            const updatedGame = this.gameService.goToMazo(room.game.id, playerId);
-            this.roomService.updateRoomGame(roomId, updatedGame);
-
-            // Send speech bubble for going to mazo
-            const player = updatedGame.players.find((p) => p.id === playerId);
-            if (player) {
-                this.sendSpeechBubble(roomId, playerId, "Ir al mazo", player.name, 5);
-            }
-
-            this.broadcastToRoom(roomId, {
-                type: WEBSOCKET_MESSAGE_TYPES.WENT_TO_MAZO,
-                data: {
-                    playerId,
-                    game: this.gameService.getGameWithActions(updatedGame.id),
-                },
-            });
-
-            // Handle automatic hand progression
-            this.handleGameProgression(roomId, updatedGame);
-        } catch (error) {
-            console.error("Error going to mazo:", error);
         }
     }
 
@@ -695,49 +459,6 @@ export class WebSocketService {
     }
 
     // ============================================================================
-    // GAME PROGRESSION
-    // ============================================================================
-
-    private handleGameProgression(roomId: string, game: any): void {
-        // Check if hand is complete and needs to deal new hand
-        if (game.phase === "handEnd") {
-            // Send HAND_END message immediately with winner information
-            const winnerPlayer = game.players.find((p: any) => p.team === game.currentHand?.winner);
-            if (winnerPlayer) {
-                this.broadcastToRoom(roomId, {
-                    type: WEBSOCKET_MESSAGE_TYPES.HAND_END,
-                    data: {
-                        winner: {
-                            name: winnerPlayer.name,
-                            team: winnerPlayer.team,
-                            points: game.currentHand?.points || 0,
-                        },
-                        game: this.gameService.getGameWithActions(game.id),
-                    },
-                });
-            }
-
-            // Deal new hand after delay
-            setTimeout(() => {
-                try {
-                    const room = this.roomService.getRoom(roomId);
-                    if (!room) return;
-
-                    const newHandGame = this.gameService.dealNewHand(room.game.id);
-                    this.roomService.updateRoomGame(roomId, newHandGame);
-
-                    this.broadcastToRoom(roomId, {
-                        type: WEBSOCKET_MESSAGE_TYPES.NEW_HAND_DEALT,
-                        data: { game: this.gameService.getGameWithActions(newHandGame.id) },
-                    });
-                } catch (error) {
-                    console.error("Error dealing new hand automatically:", error);
-                }
-            }, GAME_DELAY_NEW_HAND); // 5 seconds delay
-        }
-    }
-
-    // ============================================================================
     // MESSAGE SENDING
     // ============================================================================
 
@@ -752,30 +473,6 @@ export class WebSocketService {
         this.sendMessage(ws, {
             type: WEBSOCKET_MESSAGE_TYPES.ERROR,
             data: { message },
-        });
-    }
-
-    private broadcastToRoom(roomId: string, message: any): void {
-        const connections = this.roomService.getRoomConnections(roomId);
-        const messageStr = JSON.stringify(message);
-
-        connections.forEach((ws) => {
-            if (ws.readyState === 1) {
-                // WebSocket.OPEN
-                ws.send(messageStr);
-            }
-        });
-    }
-
-    private sendSpeechBubble(roomId: string, playerId: string, message: string, playerName: string, priority: number = 0): void {
-        this.broadcastToRoom(roomId, {
-            type: WEBSOCKET_MESSAGE_TYPES.SPEECH_BUBBLE,
-            data: {
-                playerId,
-                message,
-                playerName,
-                priority,
-            },
         });
     }
 
@@ -802,5 +499,24 @@ export class WebSocketService {
             maxScore: room.maxScore,
             gameType: room.gameType,
         };
+    }
+
+    // ============================================================================
+    // PUBLIC METHODS FOR GAME HANDLERS
+    // ============================================================================
+
+    /**
+     * Allow game handlers to broadcast to a room
+     */
+    public broadcastToRoom(roomId: string, message: any): void {
+        const connections = this.roomService.getRoomConnections(roomId);
+        const messageStr = JSON.stringify(message);
+
+        connections.forEach((ws) => {
+            if (ws.readyState === 1) {
+                // WebSocket.OPEN
+                ws.send(messageStr);
+            }
+        });
     }
 }

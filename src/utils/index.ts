@@ -1,4 +1,4 @@
-import { Card, Player, PlayedCard, Round, Team, TeamString, RoundWins, TeamWins, CardString, Suit } from "../types";
+import { Card, Player, PlayedCard, Round, Team, TeamString, RoundWins, TeamWins, CardString, Suit } from "../game/truco/types";
 import { TRUCO_VALUES, ENVIDO_VALUES, DISPLAY_VALUES, SUITS, VALUES, CARD_TYPE_DESCRIPTIONS } from "../constants";
 
 // ============================================================================

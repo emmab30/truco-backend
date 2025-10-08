@@ -10,7 +10,7 @@ import { WebSocketServer } from "ws";
 
 import { SERVER_CONFIG } from "./constants";
 import { WebSocketService } from "./services/websocketService";
-import { GameService } from "./services/gameService";
+import { TrucoGameService } from "./services/trucoGameService";
 import { RoomService } from "./services/roomService";
 import { apiRoutes } from "./routes/api";
 
@@ -54,9 +54,9 @@ const wss = new WebSocketServer({
 });
 
 // Initialize services
-const gameService = new GameService();
-const roomService = new RoomService(gameService);
-const wsService = new WebSocketService(gameService, roomService);
+const trucoGameService = new TrucoGameService();
+const roomService = new RoomService(trucoGameService);
+const wsService = new WebSocketService(trucoGameService, roomService);
 
 // WebSocket connection handling
 wss.on("connection", (ws) => {

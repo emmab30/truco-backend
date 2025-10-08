@@ -1,4 +1,7 @@
-import { Suit, EnvidoCall, TrucoCall, EnvidoResponse, TrucoResponse, ActionType, GameConfig, ServerConfig } from '../types';
+import { ServerConfig } from '../types';
+import { Suit, GameConfig } from '../game/truco/types';
+import { EnvidoCall, TrucoCall, EnvidoResponse, TrucoResponse, ActionType } from '../game/truco/types';
+export { GameType, SUPPORTED_GAME_TYPES, isValidGameType } from './gameTypes';
 
 // ============================================================================
 // CARD VALUES

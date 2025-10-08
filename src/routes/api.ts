@@ -1,15 +1,16 @@
 import { Router } from "express";
-import { GameService } from "../services/gameService";
+import { TrucoGameService } from "../services/trucoGameService";
 import { RoomService } from "../services/roomService";
-import { ApiResponse, RoomResponse, GameResponse } from "../types";
+import { ApiResponse } from "../types";
+import { RoomResponse, GameResponse } from "../game/truco/types";
 import authRoutes from "./auth";
 // import { optionalAuth } from "../middleware/auth";
 
 const router = Router();
 
 // Initialize services
-const gameService = new GameService();
-const roomService = new RoomService(gameService);
+const trucoGameService = new TrucoGameService();
+const roomService = new RoomService(trucoGameService);
 
 // ============================================================================
 // AUTH ROUTES
@@ -211,7 +212,7 @@ router.post("/rooms/:id/join", (req: any, res: any) => {
 router.get("/games/:id", (req, res) => {
     try {
         const { id } = req.params;
-        const game = gameService.getGameWithActions(id);
+        const game = trucoGameService.getGameWithActions(id);
 
         const response: ApiResponse<GameResponse> = {
             success: true,
@@ -234,11 +235,11 @@ router.get("/games/:id", (req, res) => {
 router.post("/games/:id/start", (req, res) => {
     try {
         const { id } = req.params;
-        const game = gameService.startGame(id);
+        const game = trucoGameService.startGame(id);
 
         const response: ApiResponse<GameResponse> = {
             success: true,
-            data: gameService.getGameWithActions(game.id),
+            data: trucoGameService.getGameWithActions(game.id),
         };
         res.json(response);
     } catch (error) {
@@ -258,11 +259,11 @@ router.post("/games/:id/start", (req, res) => {
 router.post("/games/:id/deal-hand", (req, res) => {
     try {
         const { id } = req.params;
-        const game = gameService.dealNewHand(id);
+        const game = trucoGameService.dealNewHand(id);
 
         const response: ApiResponse<GameResponse> = {
             success: true,
-            data: gameService.getGameWithActions(game.id),
+            data: trucoGameService.getGameWithActions(game.id),
         };
         res.json(response);
     } catch (error) {
@@ -291,7 +292,7 @@ router.get("/health", (_req, res) => {
             timestamp: new Date().toISOString(),
             uptime: process.uptime(),
             rooms: roomService.getAllRooms().length,
-            games: gameService.getAllGames().length,
+            games: trucoGameService.getAllGames().length,
         },
     };
     res.json(response);

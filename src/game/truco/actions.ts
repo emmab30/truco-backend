@@ -1,6 +1,5 @@
-import { Game, Action, GamePhase } from "./truco/types";
-import { ActionType, EnvidoCall, TrucoCall, TrucoResponse } from "./truco/types";
-import { ACTION_PRIORITIES } from "../constants";
+import { Game, Action, GamePhase, ActionType, EnvidoCall, TrucoCall, TrucoResponse } from "./types";
+import { ACTION_PRIORITIES } from "../../constants";
 
 /**
  * Determine available actions for a player
@@ -10,7 +9,7 @@ import { ACTION_PRIORITIES } from "../constants";
  */
 export function getAvailableActions(game: Game, playerId: string): Action[] {
     const actions: Action[] = [];
-    const currentPlayer = game.players.find((p: any) => p.id === playerId);
+    const currentPlayer = game.players.find((p) => p.id === playerId);
 
     if (!currentPlayer || !currentPlayer.isActive) {
         return actions;
@@ -24,13 +23,13 @@ export function getAvailableActions(game: Game, playerId: string): Action[] {
         return actions;
     }
 
-    // Get current round info
-    const currentHand = game.currentHand;
-    if (!currentHand) return actions;
-
-    const currentRound = currentHand.rounds[currentHand.currentRound];
-    if (!currentRound) return actions;
-
+  // Get current round info
+  const currentHand = game.currentHand;
+  if (!currentHand) return actions;
+  
+  const currentRound = currentHand.rounds[currentHand.currentRound];
+  if (!currentRound) return actions;
+  
     const trucoState = currentHand.trucoState;
     const envidoState = currentHand.envidoState;
 
@@ -81,10 +80,10 @@ export function getAvailableActions(game: Game, playerId: string): Action[] {
                         label: "No Quiero",
                         priority: ACTION_PRIORITIES[ActionType.NO_QUIERO],
                     });
-
+                    
                     // Can raise based on current call
                     const currentCall = envidoState.currentCall;
-
+                    
                     if (currentCall === EnvidoCall.ENVIDO) {
                         // Can equal with Envido or raise
                         actions.push({
@@ -154,8 +153,8 @@ export function getAvailableActions(game: Game, playerId: string): Action[] {
             } else if (trucoState?.accepted) {
                 // Truco was accepted, only the team that RESPONDED can escalate in their turn
                 // Find who was the last to respond with "quiero"
-                const lastResponder = Array.from(trucoState.responses.entries() as unknown as [any, any][])
-                    .filter(([_, response]: [any, any]) => response === TrucoResponse.QUIERO)
+                const lastResponder = Array.from(trucoState.responses.entries())
+                    .filter(([_, response]) => response === TrucoResponse.QUIERO)
                     .pop()?.[0];
 
                 // Only the last responder can escalate
@@ -194,7 +193,7 @@ export function getAvailableActions(game: Game, playerId: string): Action[] {
             // Can raise envido if appropriate
             const currentCall = envidoState?.currentCall;
             const originalCaller = envidoState?.originalCaller || envidoState?.currentCaller;
-
+            
             // Only the original caller can raise, others can only respond
             if (playerId === originalCaller) {
                 // Original caller can raise

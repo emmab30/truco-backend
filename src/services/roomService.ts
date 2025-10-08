@@ -1,7 +1,9 @@
-import { Room, RoomResponse, Team } from "../types";
-import { GameService } from "./gameService";
+import { Room } from "../types";
+import { RoomResponse, Team } from "../game/truco/types";
+import { TrucoGameService } from "./trucoGameService";
 import { generateId } from "../utils";
 import { getGameFactory, isValidGameType } from "../game/gameFactory";
+import { GameType } from "../constants";
 
 /**
  * Room Service
@@ -11,7 +13,7 @@ export class RoomService {
     private rooms: Map<string, Room> = new Map();
     private playerRooms: Map<string, string> = new Map(); // playerId -> roomId
 
-    constructor(private gameService: GameService) {}
+    constructor(private trucoGameService: TrucoGameService) {}
 
     /**
      * Create a new room
@@ -25,7 +27,7 @@ export class RoomService {
      * @param gameType - Type of game ('truco', 'chinchon', etc.)
      * @returns Created room
      */
-    createRoom(roomName: string, playerName: string, playerId: string, maxPlayers: number = 2, isPrivate: boolean = false, password?: string, maxScore?: number, gameType: string = 'truco'): Room {
+    createRoom(roomName: string, playerName: string, playerId: string, maxPlayers: number = 2, isPrivate: boolean = false, password?: string, maxScore?: number, gameType: string = GameType.TRUCO): Room {
         // Validate game type
         if (!isValidGameType(gameType)) {
             throw new Error(`Invalid game type: ${gameType}`);
@@ -38,10 +40,10 @@ export class RoomService {
         const finalMaxPlayers = Math.min(maxPlayers, factory.getMaxPlayers());
         const finalMaxScore = maxScore || factory.getDefaultMaxScore();
         
-        const game = this.gameService.createGame(finalMaxScore, gameType);
+        const game = this.trucoGameService.createGame(finalMaxScore, gameType);
 
         // Add the creator as the first player
-        const updatedGame = this.gameService.addPlayerToGame(game.id, playerId, playerName, Team.TEAM_1);
+        const updatedGame = this.trucoGameService.addPlayerToGame(game.id, playerId, playerName, Team.TEAM_1);
 
         const room: Room = {
             id: roomId,
@@ -59,6 +61,9 @@ export class RoomService {
 
         this.rooms.set(roomId, room);
         this.playerRooms.set(playerId, roomId);
+
+        // Log room creation
+        console.log(`🏠 Room created: "${roomName}" by ${playerName} (${playerId}) - Game: ${gameType} - ${isPrivate ? 'Private' : 'Public'} - Max Players: ${finalMaxPlayers} - Max Score: ${finalMaxScore}`);
 
         return room;
     }
@@ -84,7 +89,7 @@ export class RoomService {
 
         // Add player to game
         const team = room.game.players.length % 2;
-        const updatedGame = this.gameService.addPlayerToGame(room.game.id, playerId, playerName, team);
+        const updatedGame = this.trucoGameService.addPlayerToGame(room.game.id, playerId, playerName, team);
 
         room.game = updatedGame;
         this.playerRooms.set(playerId, roomId);
@@ -113,7 +118,7 @@ export class RoomService {
         }
 
         // Check if player is already in this room
-        const existingPlayer = room.game.players.find(p => p.id === playerId);
+        const existingPlayer = room.game.players.find((p: any) => p.id === playerId);
         if (existingPlayer) {
             // Player is already in the room, just update mapping
             this.playerRooms.set(playerId, roomId);
@@ -136,7 +141,7 @@ export class RoomService {
         // Add player to the room
         const playerName = `Player-${playerId.slice(-6)}`; // Generate a name from player ID
         const team = room.game.players.length % 2;
-        const updatedGame = this.gameService.addPlayerToGame(room.game.id, playerId, playerName, team);
+        const updatedGame = this.trucoGameService.addPlayerToGame(room.game.id, playerId, playerName, team);
 
         room.game = updatedGame;
         this.playerRooms.set(playerId, roomId);
@@ -168,7 +173,7 @@ export class RoomService {
         // Remove player from game
         const updatedGame = {
             ...room.game,
-            players: room.game.players.filter((p) => p.id !== playerId),
+            players: room.game.players.filter((p: any) => p.id !== playerId),
         };
         room.game = updatedGame;
 
@@ -176,7 +181,7 @@ export class RoomService {
          if (willBeEmpty || willHaveOnlyOnePlayer) {
              console.log("Deleting room (empty or only one player):", roomId);
              this.rooms.delete(roomId);
-             this.gameService.deleteGame(room.game.id);
+             this.trucoGameService.deleteGame(room.game.id);
          }
 
         return true;
