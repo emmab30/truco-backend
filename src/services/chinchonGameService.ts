@@ -1,6 +1,6 @@
 import { Game, Team, GameResponse } from "../game/chinchon/types";
 import { GameType } from "../constants";
-import { addPlayer, startGame, dealNewHand, drawCard, discardCard, closeRound, calculatePlayerScore } from "../game/chinchon/gameLogic";
+import { addPlayer, startGame, dealNewHand, drawCard, discardCard, closeRound, cutWithCard, calculatePlayerScore } from "../game/chinchon/gameLogic";
 import { BaseGameService } from "./baseGameService";
 
 /**
@@ -92,6 +92,20 @@ export class ChinchonGameService extends BaseGameService {
         }
 
         const updatedGame = closeRound(game, playerId);
+        this.updateGame(updatedGame);
+        return updatedGame;
+    }
+
+    /**
+     * Cut with a specific card (when player has 2+ combinations)
+     */
+    cutWithCard(gameId: string, playerId: string, cardId: string): Game {
+        const game = this.getGame(gameId);
+        if (!game) {
+            throw new Error("Game not found");
+        }
+
+        const updatedGame = cutWithCard(game, playerId, cardId);
         this.updateGame(updatedGame);
         return updatedGame;
     }
@@ -256,11 +270,22 @@ export class ChinchonGameService extends BaseGameService {
             };
         });
 
+        // Serialize the chinchonState for WebSocket transmission
+        const serializedChinchonState = game.currentHand?.chinchonState ? {
+            ...game.currentHand.chinchonState,
+            playersReadyForNextRound: game.currentHand.chinchonState.playersReadyForNextRound 
+                ? Array.from(game.currentHand.chinchonState.playersReadyForNextRound)
+                : []
+        } : undefined;
+
         return {
             id: game.id,
             phase: game.phase,
             players: playersWithActions,
-            currentHand: game.currentHand,
+            currentHand: {
+                ...game.currentHand,
+                chinchonState: serializedChinchonState
+            },
             teamScores: game.teamScores,
             winner: game.winner,
         };

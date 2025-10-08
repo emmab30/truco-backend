@@ -51,6 +51,9 @@ export interface ChinchonState {
     winner?: string;
     isRoundComplete: boolean;
     hasDrawnCard: boolean; // Track if current player has drawn a card and must discard
+    isRoundClosed: boolean; // Track if round is closed
+    roundWinner?: string | undefined; // Track who won the round
+    playersReadyForNextRound: Set<string>; // Track which players are ready for next round
 }
 
 export interface Round {
@@ -113,6 +116,7 @@ export enum ActionType {
     DRAW_FROM_DISCARD = "drawFromDiscard",
     DISCARD_CARD = "discardCard",
     CLOSE_ROUND = "closeRound",
+    CUT_WITH_CARD = "cutWithCard",
     SHOW_COMBINATIONS = "showCombinations",
 }
 
@@ -125,6 +129,8 @@ export interface Action {
     label: string;
     priority: number;
     color?: string;
+    cardId?: string;
+    points?: number;
 }
 
 export interface GameHistory {

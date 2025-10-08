@@ -27,8 +27,10 @@ export class ChinchonGameHandler extends AbstractGameHandler {
             WEBSOCKET_MESSAGE_TYPES.DRAW_CARD,
             WEBSOCKET_MESSAGE_TYPES.DISCARD_CARD,
             WEBSOCKET_MESSAGE_TYPES.CLOSE_ROUND,
+            WEBSOCKET_MESSAGE_TYPES.CUT_WITH_CARD,
             WEBSOCKET_MESSAGE_TYPES.SHOW_COMBINATIONS,
             WEBSOCKET_MESSAGE_TYPES.REORDER_CARDS,
+            WEBSOCKET_MESSAGE_TYPES.START_NEXT_ROUND,
         ];
     }
 
@@ -47,6 +49,12 @@ export class ChinchonGameHandler extends AbstractGameHandler {
                 break;
             case WEBSOCKET_MESSAGE_TYPES.CLOSE_ROUND:
                 this.handleCloseRound(ws, roomId, playerId);
+                break;
+            case WEBSOCKET_MESSAGE_TYPES.CUT_WITH_CARD:
+                this.handleCutWithCard(ws, roomId, playerId, data);
+                break;
+            case WEBSOCKET_MESSAGE_TYPES.START_NEXT_ROUND:
+                this.handleStartNextRound(ws, roomId, playerId, data);
                 break;
             case WEBSOCKET_MESSAGE_TYPES.SHOW_COMBINATIONS:
                 this.handleShowCombinations(ws, roomId, playerId, data);
@@ -98,17 +106,17 @@ export class ChinchonGameHandler extends AbstractGameHandler {
 
             const { fromDiscardPile } = data;
             const result = this.chinchonGameService.drawCard(room.game.id, playerId, fromDiscardPile);
-            
+
             // Only send success message if the action was actually successful
             if (result) {
                 const gameResponse = this.chinchonGameService.getGameWithActions(room.game.id);
 
                 this.wsService.broadcastToRoom(roomId, {
                     type: WEBSOCKET_MESSAGE_TYPES.CARD_DRAWN,
-                    data: { 
-                        playerId, 
-                        fromDiscardPile, 
-                        game: gameResponse 
+                    data: {
+                        playerId,
+                        fromDiscardPile,
+                        game: gameResponse,
                     },
                 });
 
@@ -137,17 +145,19 @@ export class ChinchonGameHandler extends AbstractGameHandler {
 
             const { cardId } = data;
             const result = this.chinchonGameService.discardCard(room.game.id, playerId, cardId);
-            
+
             // Only send success message if the action was actually successful
             if (result) {
+                // Update the room's game state with the result
+                room.game = result;
                 const gameResponse = this.chinchonGameService.getGameWithActions(room.game.id);
 
                 this.wsService.broadcastToRoom(roomId, {
                     type: WEBSOCKET_MESSAGE_TYPES.CARD_DISCARDED,
-                    data: { 
-                        playerId, 
-                        cardId, 
-                        game: gameResponse 
+                    data: {
+                        playerId,
+                        cardId,
+                        game: gameResponse,
                     },
                 });
 
@@ -173,14 +183,18 @@ export class ChinchonGameHandler extends AbstractGameHandler {
                 return;
             }
 
-            this.chinchonGameService.closeRound(room.game.id, playerId);
+            const result = this.chinchonGameService.closeRound(room.game.id, playerId);
+            if (result) {
+                // Update the room's game state with the result
+                room.game = result;
+            }
             const gameResponse = this.chinchonGameService.getGameWithActions(room.game.id);
 
             this.wsService.broadcastToRoom(roomId, {
                 type: WEBSOCKET_MESSAGE_TYPES.ROUND_CLOSED,
-                data: { 
-                    playerId, 
-                    game: gameResponse 
+                data: {
+                    playerId,
+                    game: gameResponse,
                 },
             });
 
@@ -188,6 +202,44 @@ export class ChinchonGameHandler extends AbstractGameHandler {
         } catch (error) {
             console.error("Error closing round:", error);
             this.wsService.sendError(ws, "Failed to close round");
+        }
+    }
+
+    /**
+     * Handle cut with card
+     */
+    private handleCutWithCard(ws: any, roomId: string, playerId: string, data: any): void {
+        try {
+            const room = this.roomService.getRoom(roomId);
+            if (!room) {
+                this.wsService.sendError(ws, "Room not found");
+                return;
+            }
+
+            const { cardId } = data;
+            const result = this.chinchonGameService.cutWithCard(room.game.id, playerId, cardId);
+
+            if (result) {
+                // Update the room's game state with the result
+                room.game = result;
+                const gameResponse = this.chinchonGameService.getGameWithActions(room.game.id);
+
+                this.wsService.broadcastToRoom(roomId, {
+                    type: WEBSOCKET_MESSAGE_TYPES.ROUND_CLOSED,
+                    data: {
+                        playerId,
+                        cardId,
+                        game: gameResponse,
+                    },
+                });
+
+                this.sendSpeechBubble(roomId, playerId, "¡Cortó y ganó!", "Sistema", 3);
+            } else {
+                this.wsService.sendError(ws, "No se puede cortar con esta carta");
+            }
+        } catch (error) {
+            console.error("Error cutting with card:", error);
+            this.wsService.sendError(ws, "Failed to cut with card");
         }
     }
 
@@ -208,10 +260,10 @@ export class ChinchonGameHandler extends AbstractGameHandler {
 
             this.wsService.broadcastToRoom(roomId, {
                 type: WEBSOCKET_MESSAGE_TYPES.COMBINATIONS_SHOWN,
-                data: { 
-                    playerId, 
-                    combinations, 
-                    game: gameResponse 
+                data: {
+                    playerId,
+                    combinations,
+                    game: gameResponse,
                 },
             });
 
@@ -285,5 +337,79 @@ export class ChinchonGameHandler extends AbstractGameHandler {
                 priority,
             },
         });
+    }
+
+    private handleStartNextRound(ws: any, roomId: string, playerId: string, _data: any): void {
+        try {
+            const room = this.roomService.getRoom(roomId);
+            if (!room) {
+                this.wsService.sendError(ws, "Room not found");
+                return;
+            }
+
+
+            // Check if the round is actually closed
+            if (!room.game.currentHand?.chinchonState?.isRoundClosed) {
+                console.log("❌ Round is not closed yet, rejecting START_NEXT_ROUND");
+                this.wsService.sendError(ws, "Round is not closed yet");
+                return;
+            }
+
+            console.log(`🎴 Starting next round for player ${playerId}`);
+
+            // Add player to ready list
+            const chinchonState = room.game.currentHand.chinchonState;
+            if (!chinchonState.playersReadyForNextRound) {
+                chinchonState.playersReadyForNextRound = new Set();
+            }
+
+            chinchonState.playersReadyForNextRound.add(playerId);
+            
+            // Convert Set to Array for serialization
+            const playersReadyArray = Array.from(chinchonState.playersReadyForNextRound);
+            console.log("🎴 Players ready for next round:", playersReadyArray);
+
+            // Check if all players are ready
+            const allPlayersReady = room.game.players.every((player: any) => chinchonState.playersReadyForNextRound.has(player.id));
+
+            console.log(`🎴 All players ready: ${allPlayersReady}`);
+
+            if (allPlayersReady) {
+                // All players are ready, start a new round
+                const newGame = this.chinchonGameService.startGame(room.game.id);
+                if (newGame) {
+                    const gameResponse = this.chinchonGameService.getGameWithActions(room.game.id);
+
+                    // Broadcast the new game state to all players
+                    this.wsService.broadcastToRoom(roomId, {
+                        type: WEBSOCKET_MESSAGE_TYPES.GAME_UPDATE,
+                        data: {
+                            game: gameResponse,
+                        },
+                    });
+
+                    this.sendSpeechBubble(roomId, playerId, "¡Nueva ronda iniciada!", "Sistema", 3);
+                } else {
+                    this.wsService.sendError(ws, "Could not start new round");
+                }
+            } else {
+                // Not all players are ready yet, broadcast the updated state
+                const gameResponse = this.chinchonGameService.getGameWithActions(room.game.id);
+
+                this.wsService.broadcastToRoom(roomId, {
+                    type: WEBSOCKET_MESSAGE_TYPES.GAME_UPDATE,
+                    data: {
+                        game: gameResponse,
+                    },
+                });
+
+                const readyCount = chinchonState.playersReadyForNextRound.size;
+                const totalPlayers = room.game.players.length;
+                this.sendSpeechBubble(roomId, playerId, `${readyCount}/${totalPlayers} jugadores listos para la siguiente ronda`, "Sistema", 2);
+            }
+        } catch (error) {
+            console.error("Error starting next round:", error);
+            this.wsService.sendError(ws, "Error starting next round");
+        }
     }
 }
