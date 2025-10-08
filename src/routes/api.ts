@@ -2,12 +2,19 @@ import { Router } from "express";
 import { GameService } from "../services/gameService";
 import { RoomService } from "../services/roomService";
 import { ApiResponse, RoomResponse, GameResponse } from "../types";
+import authRoutes from "./auth";
+import { optionalAuth, AuthenticatedRequest } from "../middleware/auth";
 
 const router = Router();
 
 // Initialize services
 const gameService = new GameService();
 const roomService = new RoomService(gameService);
+
+// ============================================================================
+// AUTH ROUTES
+// ============================================================================
+router.use('/auth', authRoutes);
 
 // ============================================================================
 // ROOM ROUTES

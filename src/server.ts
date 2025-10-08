@@ -1,18 +1,18 @@
+import dotenv from "dotenv";
+// Load environment variables
+dotenv.config();
+
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import { createServer } from "http";
 import { WebSocketServer } from "ws";
-import dotenv from "dotenv";
 
 import { SERVER_CONFIG } from "./constants";
 import { WebSocketService } from "./services/websocketService";
 import { GameService } from "./services/gameService";
 import { RoomService } from "./services/roomService";
 import { apiRoutes } from "./routes/api";
-
-// Load environment variables
-dotenv.config();
 
 // ============================================================================
 // EXPRESS SERVER SETUP
