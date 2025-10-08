@@ -247,10 +247,14 @@ export class ChinchonGameService extends BaseGameService {
             throw new Error('Game not found');
         }
 
-        const playersWithActions = game.players.map((player: any) => ({
-            ...player,
-            availableActions: this.getAvailableActions(gameId, player.id)
-        }));
+        const playersWithActions = game.players.map((player: any) => {
+            const combinations = game.currentHand?.chinchonState?.combinations?.get(player.id) || [];
+            return {
+                ...player,
+                availableActions: this.getAvailableActions(gameId, player.id),
+                combinations: combinations
+            };
+        });
 
         return {
             id: game.id,

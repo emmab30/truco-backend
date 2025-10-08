@@ -28,6 +28,7 @@ export class ChinchonGameHandler extends AbstractGameHandler {
             WEBSOCKET_MESSAGE_TYPES.DISCARD_CARD,
             WEBSOCKET_MESSAGE_TYPES.CLOSE_ROUND,
             WEBSOCKET_MESSAGE_TYPES.SHOW_COMBINATIONS,
+            WEBSOCKET_MESSAGE_TYPES.REORDER_CARDS,
         ];
     }
 
@@ -50,6 +51,9 @@ export class ChinchonGameHandler extends AbstractGameHandler {
             case WEBSOCKET_MESSAGE_TYPES.SHOW_COMBINATIONS:
                 this.handleShowCombinations(ws, roomId, playerId, data);
                 break;
+            case WEBSOCKET_MESSAGE_TYPES.REORDER_CARDS:
+                this.handleReorderCards(ws, roomId, playerId, data);
+                break;
             default:
                 console.log(`Unhandled Chinchón message type: ${type}`);
         }
@@ -67,7 +71,7 @@ export class ChinchonGameHandler extends AbstractGameHandler {
             }
 
             this.chinchonGameService.startGame(room.game.id);
-            const gameResponse = this.chinchonGameService.getGameResponse(room.game.id);
+            const gameResponse = this.chinchonGameService.getGameWithActions(room.game.id);
 
             this.wsService.broadcastToRoom(roomId, {
                 type: WEBSOCKET_MESSAGE_TYPES.GAME_STARTED,
@@ -93,20 +97,27 @@ export class ChinchonGameHandler extends AbstractGameHandler {
             }
 
             const { fromDiscardPile } = data;
-            this.chinchonGameService.drawCard(room.game.id, playerId, fromDiscardPile);
-            const gameResponse = this.chinchonGameService.getGameResponse(room.game.id);
+            const result = this.chinchonGameService.drawCard(room.game.id, playerId, fromDiscardPile);
+            
+            // Only send success message if the action was actually successful
+            if (result) {
+                const gameResponse = this.chinchonGameService.getGameWithActions(room.game.id);
 
-            this.wsService.broadcastToRoom(roomId, {
-                type: WEBSOCKET_MESSAGE_TYPES.CARD_DRAWN,
-                data: { 
-                    playerId, 
-                    fromDiscardPile, 
-                    game: gameResponse 
-                },
-            });
+                this.wsService.broadcastToRoom(roomId, {
+                    type: WEBSOCKET_MESSAGE_TYPES.CARD_DRAWN,
+                    data: { 
+                        playerId, 
+                        fromDiscardPile, 
+                        game: gameResponse 
+                    },
+                });
 
-            const source = fromDiscardPile ? "del descarte" : "del mazo";
-            this.sendSpeechBubble(roomId, playerId, `Robó una carta ${source}`, "Sistema", 0);
+                const source = fromDiscardPile ? "del descarte" : "del mazo";
+                this.sendSpeechBubble(roomId, playerId, `Robó una carta ${source}`, "Sistema", 0);
+            } else {
+                // Send error message if the action failed
+                this.wsService.sendError(ws, "No se puede robar carta en este momento");
+            }
         } catch (error) {
             console.error("Error drawing card:", error);
             this.wsService.sendError(ws, "Failed to draw card");
@@ -125,19 +136,26 @@ export class ChinchonGameHandler extends AbstractGameHandler {
             }
 
             const { cardId } = data;
-            this.chinchonGameService.discardCard(room.game.id, playerId, cardId);
-            const gameResponse = this.chinchonGameService.getGameResponse(room.game.id);
+            const result = this.chinchonGameService.discardCard(room.game.id, playerId, cardId);
+            
+            // Only send success message if the action was actually successful
+            if (result) {
+                const gameResponse = this.chinchonGameService.getGameWithActions(room.game.id);
 
-            this.wsService.broadcastToRoom(roomId, {
-                type: WEBSOCKET_MESSAGE_TYPES.CARD_DISCARDED,
-                data: { 
-                    playerId, 
-                    cardId, 
-                    game: gameResponse 
-                },
-            });
+                this.wsService.broadcastToRoom(roomId, {
+                    type: WEBSOCKET_MESSAGE_TYPES.CARD_DISCARDED,
+                    data: { 
+                        playerId, 
+                        cardId, 
+                        game: gameResponse 
+                    },
+                });
 
-            this.sendSpeechBubble(roomId, playerId, "Descartó una carta", "Sistema", 0);
+                this.sendSpeechBubble(roomId, playerId, "Descartó una carta", "Sistema", 0);
+            } else {
+                // Send error message if the action failed
+                this.wsService.sendError(ws, "No se puede descartar esta carta en este momento");
+            }
         } catch (error) {
             console.error("Error discarding card:", error);
             this.wsService.sendError(ws, "Failed to discard card");
@@ -156,7 +174,7 @@ export class ChinchonGameHandler extends AbstractGameHandler {
             }
 
             this.chinchonGameService.closeRound(room.game.id, playerId);
-            const gameResponse = this.chinchonGameService.getGameResponse(room.game.id);
+            const gameResponse = this.chinchonGameService.getGameWithActions(room.game.id);
 
             this.wsService.broadcastToRoom(roomId, {
                 type: WEBSOCKET_MESSAGE_TYPES.ROUND_CLOSED,
@@ -186,7 +204,7 @@ export class ChinchonGameHandler extends AbstractGameHandler {
 
             const { combinations } = data;
             this.chinchonGameService.showCombinations(room.game.id, playerId, combinations);
-            const gameResponse = this.chinchonGameService.getGameResponse(room.game.id);
+            const gameResponse = this.chinchonGameService.getGameWithActions(room.game.id);
 
             this.wsService.broadcastToRoom(roomId, {
                 type: WEBSOCKET_MESSAGE_TYPES.COMBINATIONS_SHOWN,
@@ -201,6 +219,56 @@ export class ChinchonGameHandler extends AbstractGameHandler {
         } catch (error) {
             console.error("Error showing combinations:", error);
             this.wsService.sendError(ws, "Failed to show combinations");
+        }
+    }
+
+    /**
+     * Handle reordering cards
+     */
+    private handleReorderCards(ws: any, roomId: string, playerId: string, data: any): void {
+        try {
+            const room = this.roomService.getRoom(roomId);
+            if (!room) {
+                this.wsService.sendError(ws, "Room not found");
+                return;
+            }
+
+            const { newOrder } = data;
+            if (!newOrder || !Array.isArray(newOrder)) {
+                this.wsService.sendError(ws, "Invalid card order");
+                return;
+            }
+
+            // Update the player's cards order in the game
+            const game = this.chinchonGameService.getGame(room.game.id);
+            if (!game) {
+                this.wsService.sendError(ws, "Game not found");
+                return;
+            }
+
+            // Find the player and update their cards order
+            const playerIndex = game.players.findIndex((p: any) => p.id === playerId);
+            if (playerIndex === -1) {
+                this.wsService.sendError(ws, "Player not found");
+                return;
+            }
+
+            // Update the player's cards with the new order
+            game.players[playerIndex].cards = newOrder;
+            this.chinchonGameService.updateGame(game);
+
+            // Broadcast the updated game state to all players in the room
+            const gameResponse = this.chinchonGameService.getGameResponse(room.game.id);
+            this.wsService.broadcastToRoom(roomId, {
+                type: WEBSOCKET_MESSAGE_TYPES.CARDS_REORDERED,
+                data: {
+                    playerId,
+                    game: gameResponse,
+                },
+            });
+        } catch (error: any) {
+            console.error(`Error reordering cards in room ${roomId} for player ${playerId}:`, error.message);
+            this.wsService.sendError(ws, `Error reordering cards: ${error.message}`);
         }
     }
 

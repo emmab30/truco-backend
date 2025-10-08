@@ -139,6 +139,12 @@ export function dealNewHand(game: Game): Game {
         currentPlayer.availableActions = getAvailableActions(game, currentPlayer.id) as unknown as never[];
     }
 
+    // Detect initial combinations for all players
+    players.forEach((player) => {
+        const combinations = findCombinations(player.cards as Card[]);
+        newHand.chinchonState.combinations.set(player.id, combinations);
+    });
+
     return {
         ...game,
         players,
@@ -199,14 +205,20 @@ export function drawCard(game: Game, playerId: string, fromDiscardPile: boolean)
           currentPlayer.availableActions = getAvailableActions(game, playerId);
       }
 
-    return {
-        ...game,
-        players: updatedPlayers,
-        currentHand: {
-            ...game.currentHand,
-            chinchonState: updatedChinchonState,
-        },
-    };
+      // Detect combinations for the player who drew the card
+      if (currentPlayer) {
+          const combinations = findCombinations(currentPlayer.cards as Card[]);
+          updatedChinchonState.combinations.set(playerId, combinations);
+      }
+
+      return {
+          ...game,
+          players: updatedPlayers,
+          currentHand: {
+              ...game.currentHand,
+              chinchonState: updatedChinchonState,
+          },
+      };
 }
 
 export function discardCard(game: Game, playerId: string, cardId: string): Game {
@@ -259,14 +271,20 @@ export function discardCard(game: Game, playerId: string, cardId: string): Game 
           currentPlayer.availableActions = [];
       }
 
-    return {
-        ...game,
-        players: updatedPlayers,
-        currentHand: {
-            ...game.currentHand,
-            chinchonState: updatedChinchonState,
-        },
-    };
+      // Detect combinations for the player who discarded the card
+      if (currentPlayer) {
+          const combinations = findCombinations(currentPlayer.cards as Card[]);
+          updatedChinchonState.combinations.set(playerId, combinations);
+      }
+
+      return {
+          ...game,
+          players: updatedPlayers,
+          currentHand: {
+              ...game.currentHand,
+              chinchonState: updatedChinchonState,
+          },
+      };
 }
 
 export function closeRound(game: Game, playerId: string): Game {
@@ -341,7 +359,7 @@ export function findCombinations(cards: Card[]): Combination[] {
                 if (canUse) {
                     sequence.forEach((card) => usedCards.add(card.id));
                     combinations.push({
-                        id: generateId(),
+                        id: generateStableCombinationId(sequence),
                         type: "sequence",
                         cards: sequence,
                         isValid: true,
@@ -367,7 +385,7 @@ export function findCombinations(cards: Card[]): Combination[] {
             if (canUse) {
                 valueCards.forEach((card) => usedCards.add(card.id));
                 combinations.push({
-                    id: generateId(),
+                    id: generateStableCombinationId(valueCards),
                     type: "group",
                     cards: valueCards,
                     isValid: true,
@@ -483,4 +501,19 @@ export function calculatePlayerScore(player: Player, combinations: Combination[]
     const combinedCardIds = new Set(combinations.flatMap((c: any) => c.cards.map((card: any) => card.id)));
     const uncombinedCards = player.cards.filter((card: any) => !combinedCardIds.has(card.id));
     return uncombinedCards.reduce((sum: number, card: any) => sum + (card.chinchonValue || 0), 0);
+}
+
+/**
+ * Generate a stable combination ID based on the cards in the combination
+ * This ensures the same combination always has the same ID, preventing re-animations
+ */
+export function generateStableCombinationId(cards: Card[]): string {
+    // Sort cards by ID to ensure consistent ordering
+    const sortedCards = [...cards].sort((a, b) => a.id.localeCompare(b.id));
+    
+    // Create a stable ID by joining card IDs with a separator
+    const cardIds = sortedCards.map(card => card.id).join('-');
+    
+    // Add a prefix to distinguish from regular card IDs
+    return `combo-${cardIds}`;
 }
