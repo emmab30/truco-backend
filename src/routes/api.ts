@@ -62,6 +62,8 @@ router.get("/rooms/:id", (req: any, res: any) => {
                 isActive: room.isActive,
                 createdAt: room.createdAt,
                 game: room.game,
+                isPrivate: room.isPrivate,
+                maxScore: room.maxScore,
             },
         };
         res.json(response);
@@ -81,7 +83,7 @@ router.get("/rooms/:id", (req: any, res: any) => {
  */
 router.post("/rooms", (req: any, res: any) => {
     try {
-        const { roomName, playerName, playerId, maxPlayers = 2 } = req.body;
+        const { roomName, playerName, playerId, maxPlayers = 2, isPrivate = false, password, maxScore = 15 } = req.body;
 
         if (!roomName || !playerName || !playerId) {
             const response: ApiResponse = {
@@ -91,7 +93,25 @@ router.post("/rooms", (req: any, res: any) => {
             return res.status(400).json(response);
         }
 
-        const room = roomService.createRoom(roomName, playerName, playerId, maxPlayers);
+        // Validate maxScore
+        if (maxScore !== 15 && maxScore !== 30) {
+            const response: ApiResponse = {
+                success: false,
+                error: "maxScore must be 15 or 30",
+            };
+            return res.status(400).json(response);
+        }
+
+        // Validate password for private rooms
+        if (isPrivate && !password) {
+            const response: ApiResponse = {
+                success: false,
+                error: "Password is required for private rooms",
+            };
+            return res.status(400).json(response);
+        }
+
+        const room = roomService.createRoom(roomName, playerName, playerId, maxPlayers, isPrivate, password, maxScore);
 
         const response: ApiResponse<RoomResponse> = {
             success: true,
@@ -103,6 +123,8 @@ router.post("/rooms", (req: any, res: any) => {
                 isActive: room.isActive,
                 createdAt: room.createdAt,
                 game: room.game,
+                isPrivate: room.isPrivate,
+                maxScore: room.maxScore,
             },
         };
         res.status(201).json(response);
@@ -123,7 +145,7 @@ router.post("/rooms", (req: any, res: any) => {
 router.post("/rooms/:id/join", (req: any, res: any) => {
     try {
         const { id } = req.params;
-        const { playerName, playerId } = req.body;
+        const { playerName, playerId, password } = req.body;
 
         if (!playerName || !playerId) {
             const response: ApiResponse = {
@@ -133,12 +155,12 @@ router.post("/rooms/:id/join", (req: any, res: any) => {
             return res.status(400).json(response);
         }
 
-        const room = roomService.joinRoom(id, playerName, playerId);
+        const room = roomService.joinRoom(id, playerName, playerId, password);
 
         if (!room) {
             const response: ApiResponse = {
                 success: false,
-                error: "Failed to join room (room full or not found)",
+                error: "Failed to join room (room full, not found, or incorrect password)",
             };
             return res.status(400).json(response);
         }
@@ -153,6 +175,8 @@ router.post("/rooms/:id/join", (req: any, res: any) => {
                 isActive: room.isActive,
                 createdAt: room.createdAt,
                 game: room.game,
+                isPrivate: room.isPrivate,
+                maxScore: room.maxScore,
             },
         };
         res.json(response);

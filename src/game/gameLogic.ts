@@ -68,13 +68,16 @@ function calculateEnvidoPoints(cards: Card[]): number {
  * Create a new game instance
  * @returns New game object
  */
-export function createGame(): Game {
+export function createGame(maxScore: number = 15): Game {
     return {
         id: generateId(),
         phase: GamePhase.WAITING,
         players: [],
         currentHand: null,
-        gameConfig: GAME_CONFIG,
+        gameConfig: {
+            ...GAME_CONFIG,
+            maxScore: maxScore,
+        },
         teamScores: [0, 0],
         winner: null,
         history: [],

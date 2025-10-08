@@ -168,10 +168,10 @@ export class WebSocketService {
     }
 
     private handleCreateRoom(ws: any, data: any): void {
-        const { roomName, playerName, playerId, maxPlayers = 2 } = data;
+        const { roomName, playerName, playerId, maxPlayers = 2, isPrivate = false, password, maxScore = 15 } = data;
 
         try {
-            const room = this.roomService.createRoom(roomName, playerName, playerId, maxPlayers);
+            const room = this.roomService.createRoom(roomName, playerName, playerId, maxPlayers, isPrivate, password, maxScore);
 
             // Store player connection
             this.playerConnections.set(playerId, ws);
@@ -200,12 +200,12 @@ export class WebSocketService {
             return;
         }
 
-        const { playerName, playerId } = data;
+        const { playerName, playerId, password } = data;
 
         try {
-            const room = this.roomService.joinRoom(roomId, playerName, playerId);
+            const room = this.roomService.joinRoom(roomId, playerName, playerId, password);
             if (!room) {
-                this.sendError(ws, "Error joining room");
+                this.sendError(ws, "Error joining room (room full, not found, or incorrect password)");
                 return;
             }
 

@@ -32,10 +32,11 @@ export class GameService {
 
   /**
    * Create a new game
+   * @param maxScore - Maximum score for the game (15 or 30)
    * @returns New game object
    */
-  createGame(): Game {
-    const game = createGame();
+  createGame(maxScore: number = 15): Game {
+    const game = createGame(maxScore);
     this.games.set(game.id, game);
     return game;
   }

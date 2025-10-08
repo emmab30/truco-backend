@@ -17,12 +17,15 @@ export class RoomService {
      * @param roomName - Room name
      * @param playerName - Player name
      * @param playerId - Player ID
-     * @param maxPlayers - Maximum players
+     * @param maxPlayers - Maximum players (forced to 2)
+     * @param isPrivate - Whether the room is private
+     * @param password - Password for private rooms
+     * @param maxScore - Maximum score for the game (15 or 30)
      * @returns Created room
      */
-    createRoom(roomName: string, playerName: string, playerId: string, maxPlayers: number = 2): Room {
+    createRoom(roomName: string, playerName: string, playerId: string, _maxPlayers: number = 2, isPrivate: boolean = false, password?: string, maxScore: number = 15): Room {
         const roomId = generateId();
-        const game = this.gameService.createGame();
+        const game = this.gameService.createGame(maxScore);
 
         // Add the creator as the first player
         const updatedGame = this.gameService.addPlayerToGame(game.id, playerId, playerName, Team.TEAM_1);
@@ -31,10 +34,13 @@ export class RoomService {
             id: roomId,
             name: roomName,
             game: updatedGame,
-            maxPlayers,
+            maxPlayers: 2, // Force to 2 players
             isActive: false,
             connections: new Map(),
             createdAt: new Date(),
+            isPrivate,
+            ...(isPrivate && password && { password }),
+            maxScore,
         };
 
         this.rooms.set(roomId, room);
@@ -48,11 +54,17 @@ export class RoomService {
      * @param roomId - Room ID
      * @param playerName - Player name
      * @param playerId - Player ID
+     * @param password - Password for private rooms
      * @returns Room or null if failed
      */
-    joinRoom(roomId: string, playerName: string, playerId: string): Room | null {
+    joinRoom(roomId: string, playerName: string, playerId: string, password?: string): Room | null {
         const room = this.rooms.get(roomId);
         if (!room || room.game.players.length >= room.maxPlayers) {
+            return null;
+        }
+
+        // Check password for private rooms
+        if (room.isPrivate && room.password && room.password !== password) {
             return null;
         }
 
@@ -205,6 +217,8 @@ export class RoomService {
             isActive: room.isActive,
             createdAt: room.createdAt,
             game: room.game,
+            isPrivate: room.isPrivate,
+            maxScore: room.maxScore,
         };
     }
 }

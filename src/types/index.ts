@@ -96,6 +96,9 @@ export interface Room {
     isActive: boolean;
     connections: Map<string, WebSocket>;
     createdAt: Date;
+    isPrivate: boolean;
+    password?: string;
+    maxScore: number; // 15 or 30 points
 }
 
 // ============================================================================
@@ -191,7 +194,7 @@ export interface GameHistory {
 
 export interface GameConfig {
     maxPlayers: number;
-    maxScore: number;
+    maxScore: number; // 15 or 30 points
     cardsPerPlayer: number;
     maxRoundsPerHand: number;
     roundsToWinHand: number;
@@ -212,11 +215,15 @@ export interface CreateRoomRequest {
     playerName: string;
     playerId: string;
     maxPlayers?: number;
+    isPrivate?: boolean;
+    password?: string;
+    maxScore?: number; // 15 or 30 points
 }
 
 export interface JoinRoomRequest {
     playerName: string;
     playerId: string;
+    password?: string;
 }
 
 export interface PlayCardRequest {
@@ -258,6 +265,8 @@ export interface RoomResponse {
     isActive: boolean;
     createdAt: Date;
     game: Game;
+    isPrivate: boolean;
+    maxScore: number;
 }
 
 export interface GameResponse {
