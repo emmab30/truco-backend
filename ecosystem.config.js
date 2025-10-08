@@ -11,13 +11,13 @@ module.exports = {
                 NODE_ENV: 'development',
                 PORT: 3001,
                 HOST: '0.0.0.0',
-                CORS_ORIGIN: 'http://0.0.0.0:3000'
+                CORS_ORIGIN: 'http://0.0.0.0:3001'
             },
             env_production: {
                 NODE_ENV: 'production',
                 PORT: 3001,
                 HOST: '0.0.0.0',
-                CORS_ORIGIN: 'http://0.0.0.0:3000'
+                CORS_ORIGIN: 'http://0.0.0.0:3001'
             },
             error_file: './logs/err.log',
             out_file: './logs/out.log',

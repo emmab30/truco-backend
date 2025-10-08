@@ -152,7 +152,7 @@ export const GAME_CONFIG: GameConfig = {
 export const SERVER_CONFIG: ServerConfig = {
   port: parseInt(process.env['PORT'] || '3001', 10),
   host: process.env['HOST'] || 'localhost',
-  corsOrigin: process.env['CORS_ORIGIN'] || 'http://localhost:3000'
+  corsOrigin: process.env['CORS_ORIGIN'] || 'http://localhost:3001'
 };
 
 // ============================================================================
