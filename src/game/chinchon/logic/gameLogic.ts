@@ -293,21 +293,26 @@ export function discardCard(game: Game, playerId: string, cardId: string): Game 
             const updatedPlayersWithScore = updatedPlayers.map((p) => {
                 if (p.id === playerId) {
                     // Winner gets -10 points
+                    const newScore = (p.totalScore || 0) - 10;
+                    console.log(`🎯 Winner ${p.name} score: ${p.totalScore || 0} → ${newScore}`);
                     return {
                         ...p,
-                        totalScore: (p.totalScore || 0) - 10,
+                        totalScore: newScore,
                     };
                 } else if (p.id === losingPlayer?.id) {
                     // Loser gets sum of uncombined cards
+                    const newScore = (p.totalScore || 0) + losingPlayerPoints;
+                    console.log(`🎯 Loser ${p.name} score: ${p.totalScore || 0} → ${newScore} (+${losingPlayerPoints})`);
                     return {
                         ...p,
-                        totalScore: (p.totalScore || 0) + losingPlayerPoints,
+                        totalScore: newScore,
                     };
                 }
                 return p;
             });
 
             console.log("🎯 Automatic win - RETURNING GAME WITH isRoundClosed = true");
+            console.log("🎯 Updated players with scores:", updatedPlayersWithScore.map(p => `${p.name}: ${p.totalScore}`));
             return {
                 ...game,
                 players: updatedPlayersWithScore,
@@ -343,20 +348,25 @@ export function discardCard(game: Game, playerId: string, cardId: string): Game 
             const updatedPlayersWithScore = updatedPlayers.map((p) => {
                 if (p.id === playerId) {
                     // Winner gets -10 points
+                    const newScore = (p.totalScore || 0) - 10;
+                    console.log(`🎯 Winner ${p.name} score: ${p.totalScore || 0} → ${newScore}`);
                     return {
                         ...p,
-                        totalScore: p.totalScore - 10,
+                        totalScore: newScore,
                     };
                 } else {
                     // Loser gets sum of uncombined cards
+                    const newScore = (p.totalScore || 0) + losingPlayerPoints;
+                    console.log(`🎯 Loser ${p.name} score: ${p.totalScore || 0} → ${newScore} (+${losingPlayerPoints})`);
                     return {
                         ...p,
-                        totalScore: p.totalScore + losingPlayerPoints,
+                        totalScore: newScore,
                     };
                 }
             });
 
             console.log("🎯 Normal win - RETURNING GAME WITH isRoundClosed = true");
+            console.log("🎯 Updated players with scores:", updatedPlayersWithScore.map(p => `${p.name}: ${p.totalScore}`));
             return {
                 ...game,
                 players: updatedPlayersWithScore,
@@ -435,24 +445,31 @@ export function cutWithCard(game: Game, playerId: string, cardId: string): Game 
     };
 
     console.log("🎯 cutWithCard - setting isRoundClosed = true");
+    console.log(`🎯 Cutting points: ${cuttingPoints}, Losing player points: ${losingPlayerPoints}`);
 
     // Update both players' total scores
     const updatedPlayers = game.players.map((p) => {
         if (p.id === playerId) {
             // Winner gets positive points
+            const newScore = (p.totalScore || 0) + cuttingPoints;
+            console.log(`🎯 Cutter ${p.name} score: ${p.totalScore || 0} → ${newScore} (+${cuttingPoints})`);
             return {
                 ...p,
-                totalScore: (p.totalScore || 0) + cuttingPoints,
+                totalScore: newScore,
             };
         } else if (p.id === losingPlayer?.id) {
             // Loser gets sum of uncombined cards
+            const newScore = (p.totalScore || 0) + losingPlayerPoints;
+            console.log(`🎯 Loser ${p.name} score: ${p.totalScore || 0} → ${newScore} (+${losingPlayerPoints})`);
             return {
                 ...p,
-                totalScore: (p.totalScore || 0) + losingPlayerPoints,
+                totalScore: newScore,
             };
         }
         return p;
     });
+
+    console.log("🎯 Updated players with scores:", updatedPlayers.map(p => `${p.name}: ${p.totalScore}`));
 
     return {
         ...game,
@@ -520,24 +537,31 @@ export function closeRound(game: Game, playerId: string): Game {
     };
 
     console.log("🎯 closeRound - setting isRoundClosed = true, isWinner:", isWinner);
+    console.log(`🎯 Final score: ${finalScore}, Losing player points: ${losingPlayerPoints}`);
 
     // Update both players' total scores
     const updatedPlayers = game.players.map((p) => {
         if (p.id === playerId && isWinner) {
             // Winner gets their score
+            const newScore = (p.totalScore || 0) + finalScore;
+            console.log(`🎯 Closer ${p.name} score: ${p.totalScore || 0} → ${newScore} (+${finalScore})`);
             return {
                 ...p,
-                totalScore: (p.totalScore || 0) + finalScore,
+                totalScore: newScore,
             };
         } else if (p.id === losingPlayer?.id) {
             // Loser gets sum of uncombined cards
+            const newScore = (p.totalScore || 0) + losingPlayerPoints;
+            console.log(`🎯 Loser ${p.name} score: ${p.totalScore || 0} → ${newScore} (+${losingPlayerPoints})`);
             return {
                 ...p,
-                totalScore: (p.totalScore || 0) + losingPlayerPoints,
+                totalScore: newScore,
             };
         }
         return p;
     });
+
+    console.log("🎯 Updated players with scores:", updatedPlayers.map(p => `${p.name}: ${p.totalScore}`));
 
     return {
         ...game,

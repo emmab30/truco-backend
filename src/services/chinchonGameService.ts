@@ -274,16 +274,25 @@ export class ChinchonGameService extends BaseGameService {
 
         const playersWithActions = game.players.map((player: any) => {
             const combinations = game.currentHand?.chinchonState?.combinations?.get(player.id) || [];
-            return {
+            const mappedPlayer = {
                 ...player,
+                points: player.totalScore || 0, // Normalize points field for frontend compatibility
                 availableActions: this.getAvailableActions(gameId, player.id),
                 combinations: combinations
             };
+            console.log(`📊 Mapping player ${player.name}: totalScore=${player.totalScore} → points=${mappedPlayer.points}`);
+            return mappedPlayer;
         });
 
         // Serialize the chinchonState for WebSocket transmission
         const serializedChinchonState = game.currentHand?.chinchonState ? {
             ...game.currentHand.chinchonState,
+            combinations: game.currentHand.chinchonState.combinations 
+                ? Object.fromEntries(game.currentHand.chinchonState.combinations)
+                : {},
+            roundScores: game.currentHand.chinchonState.roundScores
+                ? Object.fromEntries(game.currentHand.chinchonState.roundScores)
+                : {},
             playersReadyForNextRound: game.currentHand.chinchonState.playersReadyForNextRound 
                 ? Array.from(game.currentHand.chinchonState.playersReadyForNextRound)
                 : []
