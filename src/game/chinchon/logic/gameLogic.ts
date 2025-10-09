@@ -1,5 +1,5 @@
 import { Game, Player, Hand, Card, Team, GamePhase, ActionType, Combination, Suit } from "@/game/chinchon/types";
-import { CHINCHON_CONFIG, CHINCHON_VALUES } from "@/game/chinchon/constants";
+import { CHINCHON_CONFIG, CHINCHON_VALUES, VALUES_CHINCHON } from "@/game/chinchon/constants";
 import { generateId } from "@/shared/utils/common";
 import { generateStableCombinationId } from "@/game/chinchon/utils";
 
@@ -630,7 +630,7 @@ export function createShuffledDeck(): Card[] {
     const deck: Card[] = [];
 
     Object.values(Suit).forEach((suit) => {
-        [1, 2, 3, 4, 5, 6, 7, 10, 11, 12].forEach((value) => {
+        VALUES_CHINCHON.forEach((value) => {
             deck.push({
                 id: generateId(),
                 suit,

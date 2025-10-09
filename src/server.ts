@@ -67,12 +67,27 @@ wss.on("connection", (ws, req) => {
 
     // Set up ping/pong for connection health
     let isAlive = true;
+    let missedPings = 0;
+    const PING_INTERVAL = 30000; // 30 seconds
+    const MAX_MISSED_PINGS = 3; // Allow 3 missed pings before terminating
+    
     const pingInterval = setInterval(() => {
         if (!isAlive) {
-            console.log(`💀 Connection is dead, terminating`);
-            clearInterval(pingInterval);
-            ws.terminate();
-            return;
+            missedPings++;
+            console.log(`⚠️ Missed ping response (${missedPings}/${MAX_MISSED_PINGS})`);
+            
+            if (missedPings >= MAX_MISSED_PINGS) {
+                console.log(`💀 Connection is dead after ${missedPings} missed pings, terminating`);
+                clearInterval(pingInterval);
+                ws.terminate();
+                return;
+            }
+        } else {
+            // Reset missed pings if we got a response
+            if (missedPings > 0) {
+                console.log(`✅ Connection recovered after ${missedPings} missed ping(s)`);
+                missedPings = 0;
+            }
         }
 
         isAlive = false;
@@ -82,7 +97,7 @@ wss.on("connection", (ws, req) => {
             console.error("❌ Error sending ping:", error);
             clearInterval(pingInterval);
         }
-    }, 30000); // Ping every 30 seconds
+    }, PING_INTERVAL);
 
     ws.on("message", (data) => {
         try {
@@ -125,8 +140,12 @@ wss.on("connection", (ws, req) => {
 
     // Handle pong responses
     ws.on("pong", () => {
-        console.log("🏓 Pong received - connection is alive");
+        // Only log if we had missed pings
+        if (missedPings > 0 || !isAlive) {
+            console.log("🏓 Pong received - connection is alive");
+        }
         isAlive = true;
+        missedPings = 0;
     });
 });
 
@@ -144,21 +163,50 @@ server.listen(PORT, HOST, () => {
     console.log(`   🌐 CORS: ${SERVER_CONFIG.corsOrigin}`);
 });
 
-// Graceful shutdown
-process.on("SIGTERM", () => {
-    console.log("SIGTERM received, shutting down gracefully");
-    server.close(() => {
-        console.log("Server closed");
-        process.exit(0);
+// ============================================================================
+// GRACEFUL SHUTDOWN
+// ============================================================================
+
+function gracefulShutdown(signal: string) {
+    console.log(`${signal} received, shutting down gracefully`);
+    
+    // Close WebSocket Server first
+    console.log("Closing WebSocket connections...");
+    wss.clients.forEach((ws) => {
+        ws.close(1000, "Server shutting down");
     });
+    
+    // Close WebSocket Server
+    wss.close(() => {
+        console.log("WebSocket server closed");
+        
+        // Then close HTTP server
+        server.close(() => {
+            console.log("HTTP server closed");
+            process.exit(0);
+        });
+    });
+    
+    // Force exit after 10 seconds if graceful shutdown fails
+    setTimeout(() => {
+        console.error("Forced shutdown after timeout");
+        process.exit(1);
+    }, 10000);
+}
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+process.on("SIGHUP", () => gracefulShutdown("SIGHUP"));
+
+// Handle uncaught errors
+process.on("uncaughtException", (error) => {
+    console.error("❌ Uncaught Exception:", error);
+    gracefulShutdown("UNCAUGHT_EXCEPTION");
 });
 
-process.on("SIGINT", () => {
-    console.log("SIGINT received, shutting down gracefully");
-    server.close(() => {
-        console.log("Server closed");
-        process.exit(0);
-    });
+process.on("unhandledRejection", (reason, promise) => {
+    console.error("❌ Unhandled Rejection at:", promise, "reason:", reason);
+    gracefulShutdown("UNHANDLED_REJECTION");
 });
 
 export { app, server, wsService };

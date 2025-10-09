@@ -18,6 +18,13 @@ export const CHINCHON_CONFIG: GameConfig = {
 };
 
 // ============================================================================
+// DECK CONFIGURATION - CHINCHÓN
+// ============================================================================
+
+export const SUITS_CHINCHON = ["oros", "copas", "espadas", "bastos"] as const;
+export const VALUES_CHINCHON = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
+
+// ============================================================================
 // CARD VALUES - CHINCHÓN
 // Card values for Chinchón scoring (figures are worth 10 points)
 // ============================================================================
@@ -30,6 +37,8 @@ export const CHINCHON_VALUES: { [key: number]: number } = {
     5: 5,
     6: 6,
     7: 7,
+    8: 8,
+    9: 9,
     10: 10,  // Sota
     11: 10,  // Caballo
     12: 10,  // Rey
