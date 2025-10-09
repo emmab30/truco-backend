@@ -61,31 +61,72 @@ const roomService = new RoomService(trucoGameService, chinchonGameService);
 const wsService = new WebSocketService(trucoGameService, chinchonGameService, roomService);
 
 // WebSocket connection handling
-wss.on("connection", (ws) => {
-    // New WebSocket connection established
+wss.on("connection", (ws, req) => {
+    console.log(`🔌 New WebSocket connection from ${req.socket.remoteAddress}`);
+    console.log(`📊 Total connections: ${wss.clients.size}`);
+
+    // Set up ping/pong for connection health
+    let isAlive = true;
+    const pingInterval = setInterval(() => {
+        if (!isAlive) {
+            console.log(`💀 Connection is dead, terminating`);
+            clearInterval(pingInterval);
+            ws.terminate();
+            return;
+        }
+
+        isAlive = false;
+        try {
+            ws.ping();
+        } catch (error) {
+            console.error("❌ Error sending ping:", error);
+            clearInterval(pingInterval);
+        }
+    }, 30000); // Ping every 30 seconds
 
     ws.on("message", (data) => {
         try {
             const message = JSON.parse(data.toString());
+            console.log(`📨 Received message: ${message.type} from ${message.playerId || 'unknown'}`);
             wsService.handleMessage(ws, message);
         } catch (error) {
-            console.error("Error parsing WebSocket message:", error);
-            ws.send(
-                JSON.stringify({
-                    type: "ERROR",
-                    data: { message: "Invalid message format" },
-                })
-            );
+            console.error("❌ Error parsing WebSocket message:", error);
+            console.error("📄 Raw data:", data.toString());
+            try {
+                ws.send(
+                    JSON.stringify({
+                        type: "ERROR",
+                        data: { message: "Invalid message format" },
+                    })
+                );
+            } catch (sendError) {
+                console.error("❌ Error sending error message:", sendError);
+            }
         }
     });
 
-    ws.on("close", () => {
-        // WebSocket connection closed
+    ws.on("close", (code, reason) => {
+        console.log(`👋 WebSocket connection closed. Code: ${code}, Reason: ${reason}`);
+        console.log(`📊 Remaining connections: ${wss.clients.size}`);
+        clearInterval(pingInterval);
         wsService.handleDisconnect(ws);
     });
 
     ws.on("error", (error) => {
-        console.error("WebSocket error:", error);
+        console.error("❌ WebSocket error:", error);
+        console.error("❌ Error details:", {
+            message: error.message,
+            code: error.code,
+            type: error.type,
+            target: error.target?.readyState
+        });
+        clearInterval(pingInterval);
+    });
+
+    // Handle pong responses
+    ws.on("pong", () => {
+        console.log("🏓 Pong received - connection is alive");
+        isAlive = true;
     });
 });
 

@@ -51,12 +51,16 @@ export class WebSocketService {
     handleMessage(ws: any, message: WebSocketMessage): void {
         const { type, roomId, playerId } = message;
 
+        console.log(`🔍 Processing message: ${type} for player: ${playerId} in room: ${roomId}`);
+
         // Register the WebSocket connection
         if (playerId) {
             // Check if this player already has a connection (reconnection case)
             const existingConnection = this.playerConnections.get(playerId);
             if (existingConnection && existingConnection !== ws) {
                 console.log(`🔄 Player reconnecting: ${playerId}`);
+                console.log(`🔄 Old connection state: ${existingConnection.readyState}`);
+                console.log(`🔄 New connection state: ${ws.readyState}`);
                 // Close the old connection
                 if (existingConnection.readyState === 1) {
                     existingConnection.close();
@@ -66,15 +70,22 @@ export class WebSocketService {
             this.playerConnections.set(playerId, ws);
             if (roomId) {
                 this.roomService.addConnection(roomId, playerId, ws);
+                console.log(`🔗 Added connection for player ${playerId} to room ${roomId}`);
             }
         }
 
         try {
             // Handle room-related events
-            if (this.isRoomEvent(type)) this.handleRoomEvent(ws, message, roomId, playerId);
-            else this.handleGameEvent(ws, message, roomId, playerId);
+            if (this.isRoomEvent(type)) {
+                console.log(`🏠 Handling room event: ${type}`);
+                this.handleRoomEvent(ws, message, roomId, playerId);
+            } else {
+                console.log(`🎮 Handling game event: ${type}`);
+                this.handleGameEvent(ws, message, roomId, playerId);
+            }
         } catch (error) {
-            console.error("Error handling WebSocket message:", error);
+            console.error("❌ Error handling WebSocket message:", error);
+            console.error("❌ Message details:", { type, roomId, playerId, data: message.data });
             this.sendError(ws, "Internal server error");
         }
     }
@@ -179,10 +190,13 @@ export class WebSocketService {
      * @param ws - WebSocket connection
      */
     handleDisconnect(ws: any): void {
+        console.log(`🔍 Handling disconnect for WebSocket connection`);
+        
         // Find player by WebSocket connection
         for (const [playerId, connection] of this.playerConnections.entries()) {
             if (connection === ws) {
                 console.log(`👋 Player disconnected: ${playerId}`);
+                console.log(`🔍 Connection state before removal: ${ws.readyState}`);
                 this.playerConnections.delete(playerId);
 
                 // Get the room the player was in before removing them
@@ -195,9 +209,15 @@ export class WebSocketService {
                     const willHaveOnlyOnePlayer = room.connections.size === 2;
                     const willBeEmpty = room.connections.size <= 1;
 
+                    console.log(`🏠 Player was in room: ${roomId}`);
+                    console.log(`🎮 Game was active: ${wasGameActive}`);
+                    console.log(`👥 Room connections: ${room.connections.size}`);
+                    console.log(`👥 Room players: ${room.game.players.length}`);
+
                     // Send disconnect notification to remaining players BEFORE removing the room
                     if (room.game.players.length > 1 && !playerId.startsWith("temp-") && (willHaveOnlyOnePlayer || willBeEmpty)) {
                         const disconnectMessage = wasGameActive ? `${playerName} abandonó el juego` : `${playerName} se desconectó de la sala`;
+                        console.log(`📢 Sending disconnect notification: ${disconnectMessage}`);
 
                         this.broadcastToRoom(roomId, {
                             type: WEBSOCKET_MESSAGE_TYPES.PLAYER_DISCONNECTED,
@@ -211,6 +231,7 @@ export class WebSocketService {
                     }
 
                     // Remove player from room (this will delete the room if it becomes empty or has only one player)
+                    console.log(`🗑️ Removing player from room`);
                     this.roomService.leaveRoom(playerId);
 
                     // Update room list for everyone
@@ -220,6 +241,8 @@ export class WebSocketService {
                         type: WEBSOCKET_MESSAGE_TYPES.ROOM_LIST_UPDATED,
                         data: { rooms: allRooms },
                     });
+                } else {
+                    console.log(`⚠️ Player ${playerId} was not in any room`);
                 }
                 break;
             }
@@ -492,7 +515,15 @@ export class WebSocketService {
     private sendMessage(ws: any, message: any): void {
         if (ws.readyState === 1) {
             // WebSocket.OPEN
-            ws.send(JSON.stringify(message));
+            try {
+                ws.send(JSON.stringify(message));
+                console.log(`📤 Sent message: ${message.type} to connection`);
+            } catch (error) {
+                console.error("❌ Error sending message:", error);
+                console.error("❌ Message:", message);
+            }
+        } else {
+            console.warn(`⚠️ Cannot send message to closed connection. State: ${ws.readyState}`);
         }
     }
 
@@ -505,13 +536,26 @@ export class WebSocketService {
 
     private broadcastToAll(message: any): void {
         const messageStr = JSON.stringify(message);
+        let sentCount = 0;
+        let failedCount = 0;
 
-        this.playerConnections.forEach((ws) => {
+        this.playerConnections.forEach((ws, playerId) => {
             if (ws.readyState === 1) {
                 // WebSocket.OPEN
-                ws.send(messageStr);
+                try {
+                    ws.send(messageStr);
+                    sentCount++;
+                } catch (error) {
+                    console.error(`❌ Error broadcasting to player ${playerId}:`, error);
+                    failedCount++;
+                }
+            } else {
+                console.warn(`⚠️ Skipping closed connection for player ${playerId}. State: ${ws.readyState}`);
+                failedCount++;
             }
         });
+
+        console.log(`📡 Broadcast complete: ${sentCount} sent, ${failedCount} failed`);
     }
 
     private roomToResponse(room: any): any {
@@ -538,12 +582,27 @@ export class WebSocketService {
     public broadcastToRoom(roomId: string, message: any): void {
         const connections = this.roomService.getRoomConnections(roomId);
         const messageStr = JSON.stringify(message);
+        let sentCount = 0;
+        let failedCount = 0;
 
-        connections.forEach((ws) => {
+        console.log(`📡 Broadcasting to room ${roomId}: ${message.type} to ${connections.size} connections`);
+
+        connections.forEach((ws, playerId) => {
             if (ws.readyState === 1) {
                 // WebSocket.OPEN
-                ws.send(messageStr);
+                try {
+                    ws.send(messageStr);
+                    sentCount++;
+                } catch (error) {
+                    console.error(`❌ Error broadcasting to player ${playerId} in room ${roomId}:`, error);
+                    failedCount++;
+                }
+            } else {
+                console.warn(`⚠️ Skipping closed connection for player ${playerId} in room ${roomId}. State: ${ws.readyState}`);
+                failedCount++;
             }
         });
+
+        console.log(`📡 Room broadcast complete: ${sentCount} sent, ${failedCount} failed`);
     }
 }

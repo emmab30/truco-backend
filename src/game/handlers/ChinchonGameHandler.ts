@@ -37,33 +37,40 @@ export class ChinchonGameHandler extends AbstractGameHandler {
     handleMessage(ws: any, message: WebSocketMessage, roomId: string, playerId: string): void {
         const { type, data } = message;
 
-        switch (type) {
-            case WEBSOCKET_MESSAGE_TYPES.START_GAME:
-                this.handleStartGame(ws, roomId, playerId);
-                break;
-            case WEBSOCKET_MESSAGE_TYPES.DRAW_CARD:
-                this.handleDrawCard(ws, roomId, playerId, data);
-                break;
-            case WEBSOCKET_MESSAGE_TYPES.DISCARD_CARD:
-                this.handleDiscardCard(ws, roomId, playerId, data);
-                break;
-            case WEBSOCKET_MESSAGE_TYPES.CLOSE_ROUND:
-                this.handleCloseRound(ws, roomId, playerId);
-                break;
-            case WEBSOCKET_MESSAGE_TYPES.CUT_WITH_CARD:
-                this.handleCutWithCard(ws, roomId, playerId, data);
-                break;
-            case WEBSOCKET_MESSAGE_TYPES.START_NEXT_ROUND:
-                this.handleStartNextRound(ws, roomId, playerId, data);
-                break;
-            case WEBSOCKET_MESSAGE_TYPES.SHOW_COMBINATIONS:
-                this.handleShowCombinations(ws, roomId, playerId, data);
-                break;
-            case WEBSOCKET_MESSAGE_TYPES.REORDER_CARDS:
-                this.handleReorderCards(ws, roomId, playerId, data);
-                break;
-            default:
-                console.log(`Unhandled Chinchón message type: ${type}`);
+        console.log(`🎮 Chinchón handler processing: ${type} for player ${playerId} in room ${roomId}`);
+
+        try {
+            switch (type) {
+                case WEBSOCKET_MESSAGE_TYPES.START_GAME:
+                    this.handleStartGame(ws, roomId, playerId);
+                    break;
+                case WEBSOCKET_MESSAGE_TYPES.DRAW_CARD:
+                    this.handleDrawCard(ws, roomId, playerId, data);
+                    break;
+                case WEBSOCKET_MESSAGE_TYPES.DISCARD_CARD:
+                    this.handleDiscardCard(ws, roomId, playerId, data);
+                    break;
+                case WEBSOCKET_MESSAGE_TYPES.CLOSE_ROUND:
+                    this.handleCloseRound(ws, roomId, playerId);
+                    break;
+                case WEBSOCKET_MESSAGE_TYPES.CUT_WITH_CARD:
+                    this.handleCutWithCard(ws, roomId, playerId, data);
+                    break;
+                case WEBSOCKET_MESSAGE_TYPES.START_NEXT_ROUND:
+                    this.handleStartNextRound(ws, roomId, playerId, data);
+                    break;
+                case WEBSOCKET_MESSAGE_TYPES.SHOW_COMBINATIONS:
+                    this.handleShowCombinations(ws, roomId, playerId, data);
+                    break;
+                case WEBSOCKET_MESSAGE_TYPES.REORDER_CARDS:
+                    this.handleReorderCards(ws, roomId, playerId, data);
+                    break;
+                default:
+                    console.log(`❓ Unhandled Chinchón message type: ${type}`);
+            }
+        } catch (error) {
+            console.error(`❌ Error in Chinchón handler for ${type}:`, error);
+            this.wsService.sendError(ws, `Error processing ${type}: ${error.message}`);
         }
     }
 
