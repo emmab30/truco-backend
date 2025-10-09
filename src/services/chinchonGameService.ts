@@ -10,8 +10,8 @@ import {
     closeRound,
     cutWithCard,
     calculatePlayerScore
-} from "../game/chinchon";
-import { GameType } from "../constants";
+} from "@/game/chinchon";
+import { GameType } from "@/shared/constants";
 import { BaseGameService } from "./baseGameService";
 
 /**

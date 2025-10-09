@@ -3,8 +3,8 @@
 // Funciones utilitarias específicas del juego de Chinchón
 // ============================================================================
 
-import { Card, Player, Combination } from "./types";
-import { CHINCHON_VALUES } from "./constants";
+import { Card, Player, Combination } from "@/game/chinchon/types";
+import { CHINCHON_VALUES } from "@/game/chinchon/constants";
 
 /**
  * Get next player in turn order

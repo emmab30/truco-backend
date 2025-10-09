@@ -11,7 +11,7 @@ export {
     capitalize,
     isValidPlayerId,
     isValidRoomId
-} from "../shared/utils/common";
+} from "@/shared/utils/common";
 
 // Re-export Truco-specific utilities
 export {
@@ -23,4 +23,4 @@ export {
     determineRoundWinner,
     determineHandWinner,
     isValidCardString
-} from "../game/truco/utils";
+} from "@/game/truco/utils";

@@ -1,11 +1,11 @@
-import { WebSocketMessage } from "../shared/types";
-import { WEBSOCKET_MESSAGE_TYPES, GameType } from "../shared/constants";
+import { WebSocketMessage } from "@/shared/types";
+import { WEBSOCKET_MESSAGE_TYPES, GameType } from "@/shared/constants";
 import { TrucoGameService } from "./trucoGameService";
 import { ChinchonGameService } from "./chinchonGameService";
 import { RoomService } from "./roomService";
-import { GameHandlerRegistry } from "../game/handlers/GameHandlerRegistry";
-import { TrucoGameHandler } from "../game/handlers/TrucoGameHandler";
-import { ChinchonGameHandler } from "../game/handlers/ChinchonGameHandler";
+import { GameHandlerRegistry } from "@/game/handlers/GameHandlerRegistry";
+import { TrucoGameHandler } from "@/game/handlers/TrucoGameHandler";
+import { ChinchonGameHandler } from "@/game/handlers/ChinchonGameHandler";
 
 /**
  * WebSocket Service

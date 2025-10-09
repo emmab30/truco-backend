@@ -1,8 +1,8 @@
-import { WebSocketMessage } from "../../shared/types";
-import { WEBSOCKET_MESSAGE_TYPES, GameType } from "../../shared/constants";
+import { WebSocketMessage } from "@/shared/types";
+import { WEBSOCKET_MESSAGE_TYPES, GameType } from "@/shared/constants";
 import { AbstractGameHandler } from "./BaseGameHandler";
-import { ChinchonGameService } from "../../services/chinchonGameService";
-import { RoomService } from "../../services/roomService";
+import { ChinchonGameService } from "@/services/chinchonGameService";
+import { RoomService } from "@/services/roomService";
 
 /**
  * Chinchón Game Handler

@@ -1,10 +1,10 @@
-import { Room } from "../shared/types";
-import { RoomResponse, Team } from "../game/truco/types";
-import { TrucoGameService } from "./trucoGameService";
-import { ChinchonGameService } from "./chinchonGameService";
-import { generateId } from "../shared/utils/common";
-import { getGameFactory, isValidGameType } from "../game/gameFactory";
-import { GameType } from "../shared/constants";
+import { Room } from "@/shared/types";
+import { RoomResponse, Team } from "@/game/truco/types";
+import { TrucoGameService } from "@/services/trucoGameService";
+import { ChinchonGameService } from "@/services/chinchonGameService";
+import { generateId } from "@/shared/utils/common";
+import { getGameFactory, isValidGameType } from "@/game/gameFactory";
+import { GameType } from "@/shared/constants";
 
 /**
  * Room Service

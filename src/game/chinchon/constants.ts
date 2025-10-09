@@ -3,7 +3,7 @@
 // Constantes específicas del juego de Chinchón
 // ============================================================================
 
-import { GameConfig } from "./types";
+import { GameConfig } from "@/game/chinchon/types";
 
 // ============================================================================
 // CHINCHÓN CONFIGURATION

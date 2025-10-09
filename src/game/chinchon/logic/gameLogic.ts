@@ -1,7 +1,7 @@
-import { Game, Player, Hand, Card, Team, GamePhase, ActionType, Combination, Suit } from "../types";
-import { CHINCHON_CONFIG, CHINCHON_VALUES } from "../constants";
-import { generateId } from "../../../shared/utils/common";
-import { generateStableCombinationId } from "../utils";
+import { Game, Player, Hand, Card, Team, GamePhase, ActionType, Combination, Suit } from "@/game/chinchon/types";
+import { CHINCHON_CONFIG, CHINCHON_VALUES } from "@/game/chinchon/constants";
+import { generateId } from "@/shared/utils/common";
+import { generateStableCombinationId } from "@/game/chinchon/utils";
 
 // ============================================================================
 // CHINCHÓN GAME LOGIC
@@ -91,29 +91,29 @@ export function dealNewHand(game: Game): Game {
     const discardCard = deck.pop();
     const discardPile: (Card | undefined)[] = discardCard ? [discardCard] : [];
 
-      const newHand: Hand = {
-          number: (game.currentHand?.number || 0) + 1,
-          dealer: players[0]?.id || "", // First player is dealer
-          currentPlayerId: players[0]?.id || "",
-          rounds: [],
-          currentRound: 0,
-          winner: null,
-          points: 0,
-          chinchonState: {
-              isActive: true,
-              currentPlayerId: players[0]?.id || "",
-              deck,
-              discardPile,
-              roundScores: new Map(),
-              combinations: new Map(),
-              roundNumber: 1,
-              isRoundComplete: false,
-              hasDrawnCard: false, // Player hasn't drawn a card yet
-              isRoundClosed: false,
-              roundWinner: undefined,
-              playersReadyForNextRound: new Set(),
-          },
-      };
+    const newHand: Hand = {
+        number: (game.currentHand?.number || 0) + 1,
+        dealer: players[0]?.id || "", // First player is dealer
+        currentPlayerId: players[0]?.id || "",
+        rounds: [],
+        currentRound: 0,
+        winner: null,
+        points: 0,
+        chinchonState: {
+            isActive: true,
+            currentPlayerId: players[0]?.id || "",
+            deck,
+            discardPile,
+            roundScores: new Map(),
+            combinations: new Map(),
+            roundNumber: 1,
+            isRoundComplete: false,
+            hasDrawnCard: false, // Player hasn't drawn a card yet
+            isRoundClosed: false,
+            roundWinner: undefined,
+            playersReadyForNextRound: new Set(),
+        },
+    };
 
     // Set available actions for current player
     const currentPlayer = players.find((p) => p.id === newHand.currentPlayerId);
@@ -150,7 +150,7 @@ export function drawCard(game: Game, playerId: string, fromDiscardPile: boolean)
     }
 
     const chinchonState = game.currentHand.chinchonState;
-    
+
     // If player already drew a card this turn, they cannot draw another
     if (chinchonState.hasDrawnCard) {
         return game; // Player already drew a card, must discard
@@ -170,37 +170,37 @@ export function drawCard(game: Game, playerId: string, fromDiscardPile: boolean)
         return game; // No cards available
     }
 
-      // Add card to player's hand
-      const updatedPlayers = game.players.map((p) => (p.id === playerId ? { ...p, cards: [...p.cards, drawnCard] } : p));
+    // Add card to player's hand
+    const updatedPlayers = game.players.map((p) => (p.id === playerId ? { ...p, cards: [...p.cards, drawnCard] } : p));
 
-      // Mark that player has drawn a card and must discard
-      const updatedChinchonState = {
-          ...chinchonState,
-          deck: chinchonState.deck,
-          discardPile: chinchonState.discardPile,
-          hasDrawnCard: true, // Player must now discard a card
-      };
+    // Mark that player has drawn a card and must discard
+    const updatedChinchonState = {
+        ...chinchonState,
+        deck: chinchonState.deck,
+        discardPile: chinchonState.discardPile,
+        hasDrawnCard: true, // Player must now discard a card
+    };
 
-      // Update available actions for current player
-      const currentPlayer = updatedPlayers.find((p) => p.id === playerId);
-      if (currentPlayer) {
-          currentPlayer.availableActions = getAvailableActions(game, playerId);
-      }
+    // Update available actions for current player
+    const currentPlayer = updatedPlayers.find((p) => p.id === playerId);
+    if (currentPlayer) {
+        currentPlayer.availableActions = getAvailableActions(game, playerId);
+    }
 
-      // Detect combinations for the player who drew the card
-      if (currentPlayer) {
-          const combinations = findCombinations(currentPlayer.cards as Card[]);
-          updatedChinchonState.combinations.set(playerId, combinations);
-      }
+    // Detect combinations for the player who drew the card
+    if (currentPlayer) {
+        const combinations = findCombinations(currentPlayer.cards as Card[]);
+        updatedChinchonState.combinations.set(playerId, combinations);
+    }
 
-      return {
-          ...game,
-          players: updatedPlayers,
-          currentHand: {
-              ...game.currentHand,
-              chinchonState: updatedChinchonState,
-          },
-      };
+    return {
+        ...game,
+        players: updatedPlayers,
+        currentHand: {
+            ...game.currentHand,
+            chinchonState: updatedChinchonState,
+        },
+    };
 }
 
 export function discardCard(game: Game, playerId: string, cardId: string): Game {
@@ -214,7 +214,7 @@ export function discardCard(game: Game, playerId: string, cardId: string): Game 
     }
 
     const chinchonState = game.currentHand.chinchonState;
-    
+
     // Player can only discard if they have drawn a card (have 8 cards)
     if (!chinchonState.hasDrawnCard) {
         return game; // Player hasn't drawn a card yet
@@ -230,152 +230,152 @@ export function discardCard(game: Game, playerId: string, cardId: string): Game 
     // Remove card from player's hand
     const updatedPlayers = game.players.map((p) => (p.id === playerId ? { ...p, cards: p.cards.filter((c) => c.id !== cardId) } : p));
 
-      // Add card to discard pile
-      const updatedChinchonState = {
-          ...game.currentHand.chinchonState,
-          discardPile: [...game.currentHand.chinchonState.discardPile, discardedCard],
-          hasDrawnCard: false, // Reset for next player
-      };
+    // Add card to discard pile
+    const updatedChinchonState = {
+        ...game.currentHand.chinchonState,
+        discardPile: [...game.currentHand.chinchonState.discardPile, discardedCard],
+        hasDrawnCard: false, // Reset for next player
+    };
 
-      // Move to next player
-      const nextPlayerId = getNextPlayer(game.players, playerId);
-      updatedChinchonState.currentPlayerId = nextPlayerId;
+    // Move to next player
+    const nextPlayerId = getNextPlayer(game.players, playerId);
+    updatedChinchonState.currentPlayerId = nextPlayerId;
 
-      // Update available actions for next player
-      const nextPlayer = updatedPlayers.find((p) => p.id === nextPlayerId);
-      if (nextPlayer) {
-          nextPlayer.availableActions = getAvailableActions(game, nextPlayerId);
-      }
+    // Update available actions for next player
+    const nextPlayer = updatedPlayers.find((p) => p.id === nextPlayerId);
+    if (nextPlayer) {
+        nextPlayer.availableActions = getAvailableActions(game, nextPlayerId);
+    }
 
-      // Clear actions for current player
-      const currentPlayer = updatedPlayers.find((p) => p.id === playerId);
-      if (currentPlayer) {
-          currentPlayer.availableActions = [];
-      }
+    // Clear actions for current player
+    const currentPlayer = updatedPlayers.find((p) => p.id === playerId);
+    if (currentPlayer) {
+        currentPlayer.availableActions = [];
+    }
 
-      // Detect combinations for the player who discarded the card
-      if (currentPlayer) {
-          console.log("🎯 discardCard - currentPlayer after discard:", {
-              playerId: currentPlayer.id,
-              cardsLeft: currentPlayer.cards.length,
-              cards: currentPlayer.cards.map(c => c.id)
-          });
-          
-          const combinations = findCombinations(currentPlayer.cards as Card[]);
-          updatedChinchonState.combinations.set(playerId, combinations);
-          
-          // Check if player has 2+ combinations and no uncombined cards (automatic win)
-          const combinedCardIds = new Set(combinations.flatMap((c: any) => c.cards.map((card: any) => card.id)));
-          const uncombinedCards = currentPlayer.cards.filter((card: any) => !combinedCardIds.has(card.id));
-          
-          if (combinations.length >= 2 && uncombinedCards.length === 0) {
-              // Player wins automatically with -10 points
-              console.log("🎯 Automatic win in discardCard - setting isRoundClosed = true");
-              updatedChinchonState.isRoundClosed = true;
-              updatedChinchonState.roundWinner = playerId;
-              
-              // Calculate points for the losing player (sum of uncombined cards)
-              const losingPlayer = updatedPlayers.find((p) => p.id !== playerId);
-              let losingPlayerPoints = 0;
-              
-              if (losingPlayer) {
-                  const losingPlayerCombinations = updatedChinchonState.combinations.get(losingPlayer.id) || [];
-                  const losingPlayerCombinedCardIds = new Set(losingPlayerCombinations.flatMap((c) => c.cards.map((card) => card.id)));
-                  const losingPlayerUncombinedCards = losingPlayer.cards.filter((card) => !losingPlayerCombinedCardIds.has(card.id));
-                  losingPlayerPoints = losingPlayerUncombinedCards.reduce((sum: number, card: any) => sum + (card.chinchonValue || 0), 0);
-              }
-              
-              // Update round scores for both players
-              updatedChinchonState.roundScores.set(playerId, -10); // Winner gets -10 points
-              updatedChinchonState.roundScores.set(losingPlayer?.id || '', losingPlayerPoints); // Loser gets sum of uncombined cards
-              
-              // Update both players' total scores
-              const updatedPlayersWithScore = updatedPlayers.map((p) => {
-                  if (p.id === playerId) {
-                      // Winner gets -10 points
-                      return {
-                          ...p,
-                          totalScore: (p.totalScore || 0) - 10,
-                      };
-                  } else if (p.id === losingPlayer?.id) {
-                      // Loser gets sum of uncombined cards
-                      return {
-                          ...p,
-                          totalScore: (p.totalScore || 0) + losingPlayerPoints,
-                      };
-                  }
-                  return p;
-              });
-              
-              console.log("🎯 Automatic win - RETURNING GAME WITH isRoundClosed = true");
-              return {
-                  ...game,
-                  players: updatedPlayersWithScore,
-                  currentHand: {
-                      ...game.currentHand,
-                      chinchonState: updatedChinchonState,
-                  },
-              };
-          }
-          
-          // Check if player has no cards left (normal win condition) - PRIORITY OVER COMBINATIONS
-          if (currentPlayer.cards.length === 0) {
-              console.log("🎯 Normal win in discardCard - player has no cards left, setting isRoundClosed = true");
-              updatedChinchonState.isRoundClosed = true;
-              updatedChinchonState.roundWinner = playerId;
-              
-              // Calculate points for the losing player (sum of uncombined cards)
-              const losingPlayer = updatedPlayers.find((p) => p.id !== playerId);
-              let losingPlayerPoints = 0;
-              
-              if (losingPlayer) {
-                  const losingPlayerCombinations = updatedChinchonState.combinations.get(losingPlayer.id) || [];
-                  const losingPlayerCombinedCardIds = new Set(losingPlayerCombinations.flatMap((c) => c.cards.map((card) => card.id)));
-                  const losingPlayerUncombinedCards = losingPlayer.cards.filter((card) => !losingPlayerCombinedCardIds.has(card.id));
-                  losingPlayerPoints = losingPlayerUncombinedCards.reduce((sum: number, card: any) => sum + (card.chinchonValue || 0), 0);
-              }
-              
-              // Update round scores for both players
-              updatedChinchonState.roundScores.set(playerId, -10); // Winner gets -10 points
-              updatedChinchonState.roundScores.set(losingPlayer?.id || '', losingPlayerPoints); // Loser gets sum of uncombined cards
-              
-              // Update both players' total scores
-              const updatedPlayersWithScore = updatedPlayers.map((p) => {
-                  if (p.id === playerId) {
-                      // Winner gets -10 points
-                      return {
-                          ...p,
-                          totalScore: p.totalScore - 10,
-                      };
-                  } else {
-                      // Loser gets sum of uncombined cards
-                      return {
-                          ...p,
-                          totalScore: p.totalScore + losingPlayerPoints,
-                      };
-                  }
-              });
-              
-              console.log("🎯 Normal win - RETURNING GAME WITH isRoundClosed = true");
-              return {
-                  ...game,
-                  players: updatedPlayersWithScore,
-                  currentHand: {
-                      ...game.currentHand,
-                      chinchonState: updatedChinchonState,
-                  },
-              };
-          }
-      }
+    // Detect combinations for the player who discarded the card
+    if (currentPlayer) {
+        console.log("🎯 discardCard - currentPlayer after discard:", {
+            playerId: currentPlayer.id,
+            cardsLeft: currentPlayer.cards.length,
+            cards: currentPlayer.cards.map((c) => c.id),
+        });
 
-      return {
-          ...game,
-          players: updatedPlayers,
-          currentHand: {
-              ...game.currentHand,
-              chinchonState: updatedChinchonState,
-          },
-      };
+        const combinations = findCombinations(currentPlayer.cards as Card[]);
+        updatedChinchonState.combinations.set(playerId, combinations);
+
+        // Check if player has 2+ combinations and no uncombined cards (automatic win)
+        const combinedCardIds = new Set(combinations.flatMap((c: any) => c.cards.map((card: any) => card.id)));
+        const uncombinedCards = currentPlayer.cards.filter((card: any) => !combinedCardIds.has(card.id));
+
+        if (combinations.length >= 2 && uncombinedCards.length === 0) {
+            // Player wins automatically with -10 points
+            console.log("🎯 Automatic win in discardCard - setting isRoundClosed = true");
+            updatedChinchonState.isRoundClosed = true;
+            updatedChinchonState.roundWinner = playerId;
+
+            // Calculate points for the losing player (sum of uncombined cards)
+            const losingPlayer = updatedPlayers.find((p) => p.id !== playerId);
+            let losingPlayerPoints = 0;
+
+            if (losingPlayer) {
+                const losingPlayerCombinations = updatedChinchonState.combinations.get(losingPlayer.id) || [];
+                const losingPlayerCombinedCardIds = new Set(losingPlayerCombinations.flatMap((c) => c.cards.map((card) => card.id)));
+                const losingPlayerUncombinedCards = losingPlayer.cards.filter((card) => !losingPlayerCombinedCardIds.has(card.id));
+                losingPlayerPoints = losingPlayerUncombinedCards.reduce((sum: number, card: any) => sum + (card.chinchonValue || 0), 0);
+            }
+
+            // Update round scores for both players
+            updatedChinchonState.roundScores.set(playerId, -10); // Winner gets -10 points
+            updatedChinchonState.roundScores.set(losingPlayer?.id || "", losingPlayerPoints); // Loser gets sum of uncombined cards
+
+            // Update both players' total scores
+            const updatedPlayersWithScore = updatedPlayers.map((p) => {
+                if (p.id === playerId) {
+                    // Winner gets -10 points
+                    return {
+                        ...p,
+                        totalScore: (p.totalScore || 0) - 10,
+                    };
+                } else if (p.id === losingPlayer?.id) {
+                    // Loser gets sum of uncombined cards
+                    return {
+                        ...p,
+                        totalScore: (p.totalScore || 0) + losingPlayerPoints,
+                    };
+                }
+                return p;
+            });
+
+            console.log("🎯 Automatic win - RETURNING GAME WITH isRoundClosed = true");
+            return {
+                ...game,
+                players: updatedPlayersWithScore,
+                currentHand: {
+                    ...game.currentHand,
+                    chinchonState: updatedChinchonState,
+                },
+            };
+        }
+
+        // Check if player has no cards left (normal win condition) - PRIORITY OVER COMBINATIONS
+        if (currentPlayer.cards.length === 0) {
+            console.log("🎯 Normal win in discardCard - player has no cards left, setting isRoundClosed = true");
+            updatedChinchonState.isRoundClosed = true;
+            updatedChinchonState.roundWinner = playerId;
+
+            // Calculate points for the losing player (sum of uncombined cards)
+            const losingPlayer = updatedPlayers.find((p) => p.id !== playerId);
+            let losingPlayerPoints = 0;
+
+            if (losingPlayer) {
+                const losingPlayerCombinations = updatedChinchonState.combinations.get(losingPlayer.id) || [];
+                const losingPlayerCombinedCardIds = new Set(losingPlayerCombinations.flatMap((c) => c.cards.map((card) => card.id)));
+                const losingPlayerUncombinedCards = losingPlayer.cards.filter((card) => !losingPlayerCombinedCardIds.has(card.id));
+                losingPlayerPoints = losingPlayerUncombinedCards.reduce((sum: number, card: any) => sum + (card.chinchonValue || 0), 0);
+            }
+
+            // Update round scores for both players
+            updatedChinchonState.roundScores.set(playerId, -10); // Winner gets -10 points
+            updatedChinchonState.roundScores.set(losingPlayer?.id || "", losingPlayerPoints); // Loser gets sum of uncombined cards
+
+            // Update both players' total scores
+            const updatedPlayersWithScore = updatedPlayers.map((p) => {
+                if (p.id === playerId) {
+                    // Winner gets -10 points
+                    return {
+                        ...p,
+                        totalScore: p.totalScore - 10,
+                    };
+                } else {
+                    // Loser gets sum of uncombined cards
+                    return {
+                        ...p,
+                        totalScore: p.totalScore + losingPlayerPoints,
+                    };
+                }
+            });
+
+            console.log("🎯 Normal win - RETURNING GAME WITH isRoundClosed = true");
+            return {
+                ...game,
+                players: updatedPlayersWithScore,
+                currentHand: {
+                    ...game.currentHand,
+                    chinchonState: updatedChinchonState,
+                },
+            };
+        }
+    }
+
+    return {
+        ...game,
+        players: updatedPlayers,
+        currentHand: {
+            ...game.currentHand,
+            chinchonState: updatedChinchonState,
+        },
+    };
 }
 
 export function cutWithCard(game: Game, playerId: string, cardId: string): Game {
@@ -397,13 +397,12 @@ export function cutWithCard(game: Game, playerId: string, cardId: string): Game 
 
     // Get player's combinations to determine scoring
     const combinations = game.currentHand.chinchonState.combinations.get(playerId) || [];
-    
+
     let cuttingPoints: number;
-    
+
     // Check if player has 2 combinations of 3 cards each and cutting with card < 5
-    const hasTwoCombinationsOfThree = combinations.length === 2 && 
-        combinations.every(combo => combo.cards.length === 3);
-    
+    const hasTwoCombinationsOfThree = combinations.length === 2 && combinations.every((combo) => combo.cards.length === 3);
+
     if (hasTwoCombinationsOfThree && (cardToCut.chinchonValue || 0) < 5) {
         // Score the value of the cutting card (positive points)
         cuttingPoints = cardToCut.chinchonValue || 0;
@@ -415,7 +414,7 @@ export function cutWithCard(game: Game, playerId: string, cardId: string): Game 
     // Calculate points for the losing player (sum of uncombined cards)
     const losingPlayer = game.players.find((p) => p.id !== playerId);
     let losingPlayerPoints = 0;
-    
+
     if (losingPlayer) {
         const losingPlayerCombinations = game.currentHand.chinchonState.combinations.get(losingPlayer.id) || [];
         const losingPlayerCombinedCardIds = new Set(losingPlayerCombinations.flatMap((c) => c.cards.map((card) => card.id)));
@@ -426,15 +425,15 @@ export function cutWithCard(game: Game, playerId: string, cardId: string): Game 
     // Update round scores for both players
     const updatedRoundScores = new Map(game.currentHand.chinchonState.roundScores);
     updatedRoundScores.set(playerId, cuttingPoints); // Winner gets positive points
-    updatedRoundScores.set(losingPlayer?.id || '', losingPlayerPoints); // Loser gets sum of uncombined cards
-    
+    updatedRoundScores.set(losingPlayer?.id || "", losingPlayerPoints); // Loser gets sum of uncombined cards
+
     const updatedChinchonState = {
         ...game.currentHand.chinchonState,
         roundScores: updatedRoundScores,
         isRoundClosed: true,
         roundWinner: playerId,
     };
-    
+
     console.log("🎯 cutWithCard - setting isRoundClosed = true");
 
     // Update both players' total scores
@@ -484,10 +483,10 @@ export function closeRound(game: Game, playerId: string): Game {
     // Check if player has 2+ combinations and no uncombined cards (automatic win)
     const hasTwoOrMoreCombinations = combinations.length >= 2;
     const hasNoUncombinedCards = uncombinedCards.length === 0;
-    
+
     let finalScore = playerScore;
     let isWinner = false;
-    
+
     if (hasTwoOrMoreCombinations && hasNoUncombinedCards) {
         // Player wins automatically with -10 points
         finalScore = -10;
@@ -500,7 +499,7 @@ export function closeRound(game: Game, playerId: string): Game {
     // Calculate points for the losing player (sum of uncombined cards)
     const losingPlayer = game.players.find((p) => p.id !== playerId);
     let losingPlayerPoints = 0;
-    
+
     if (losingPlayer) {
         const losingPlayerCombinations = game.currentHand.chinchonState.combinations.get(losingPlayer.id) || [];
         const losingPlayerCombinedCardIds = new Set(losingPlayerCombinations.flatMap((c) => c.cards.map((card) => card.id)));
@@ -511,15 +510,15 @@ export function closeRound(game: Game, playerId: string): Game {
     // Update round scores for both players
     const updatedRoundScores = new Map(game.currentHand.chinchonState.roundScores);
     updatedRoundScores.set(playerId, finalScore); // Winner gets their score
-    updatedRoundScores.set(losingPlayer?.id || '', losingPlayerPoints); // Loser gets sum of uncombined cards
-    
+    updatedRoundScores.set(losingPlayer?.id || "", losingPlayerPoints); // Loser gets sum of uncombined cards
+
     const updatedChinchonState = {
         ...game.currentHand.chinchonState,
         roundScores: updatedRoundScores,
         isRoundClosed: true,
         roundWinner: isWinner ? playerId : undefined,
     };
-    
+
     console.log("🎯 closeRound - setting isRoundClosed = true, isWinner:", isWinner);
 
     // Update both players' total scores
@@ -681,10 +680,10 @@ export function getAvailableActions(game: Game, playerId: string): any[] {
     // If player has drawn a card, they MUST discard
     if (chinchonState.hasDrawnCard) {
         // Player must discard a card (they have 8 cards now)
-        actions.push({ 
-            type: ActionType.DISCARD_CARD, 
-            label: "Descartar carta", 
-            priority: 1 
+        actions.push({
+            type: ActionType.DISCARD_CARD,
+            label: "Descartar carta",
+            priority: 1,
         });
         return actions;
     }
@@ -742,4 +741,3 @@ export function calculatePlayerScore(player: Player, combinations: Combination[]
     const uncombinedCards = player.cards.filter((card: any) => !combinedCardIds.has(card.id));
     return uncombinedCards.reduce((sum: number, card: any) => sum + (card.chinchonValue || 0), 0);
 }
-

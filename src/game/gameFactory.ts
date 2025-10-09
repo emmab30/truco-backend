@@ -1,6 +1,6 @@
-import { Game } from "./truco/types";
+import { Game } from "@/game/truco/types";
 import { createGame as createTrucoGame } from "./truco";
-import { GameType } from "../shared/constants";
+import { GameType } from "@/shared/constants";
 
 // Game type definitions - now using enum from constants
 

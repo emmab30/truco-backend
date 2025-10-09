@@ -13,4 +13,4 @@ export {
     JoinRoomRequest,
     ApiResponse,
     WebSocketEvents
-} from "../shared/types";
+} from "@/shared/types";

@@ -8,12 +8,12 @@ import helmet from "helmet";
 import { createServer } from "http";
 import { WebSocketServer } from "ws";
 
-import { SERVER_CONFIG } from "./shared/constants";
-import { WebSocketService } from "./services/websocketService";
-import { TrucoGameService } from "./services/trucoGameService";
-import { ChinchonGameService } from "./services/chinchonGameService";
-import { RoomService } from "./services/roomService";
-import { apiRoutes } from "./routes/api";
+import { SERVER_CONFIG } from "@/shared/constants";
+import { WebSocketService } from "@/services/websocketService";
+import { TrucoGameService } from "@/services/trucoGameService";
+import { ChinchonGameService } from "@/services/chinchonGameService";
+import { RoomService } from "@/services/roomService";
+import { apiRoutes } from "@/routes/api";
 
 // ============================================================================
 // EXPRESS SERVER SETUP
@@ -87,7 +87,7 @@ wss.on("connection", (ws, req) => {
     ws.on("message", (data) => {
         try {
             const message = JSON.parse(data.toString());
-            console.log(`📨 Received message: ${message.type} from ${message.playerId || 'unknown'}`);
+            console.log(`📨 Received message: ${message.type} from ${message.playerId || "unknown"}`);
             wsService.handleMessage(ws, message);
         } catch (error) {
             console.error("❌ Error parsing WebSocket message:", error);
@@ -118,7 +118,7 @@ wss.on("connection", (ws, req) => {
             message: error.message,
             code: error.code,
             type: error.type,
-            target: error.target?.readyState
+            target: error.target?.readyState,
         });
         clearInterval(pingInterval);
     });

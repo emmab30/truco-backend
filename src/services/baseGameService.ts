@@ -1,4 +1,4 @@
-import { createGameByType } from "../game/gameFactory";
+import { createGameByType } from "@/game/gameFactory";
 
 /**
  * Base Game Service

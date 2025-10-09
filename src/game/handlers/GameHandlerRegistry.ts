@@ -1,4 +1,4 @@
-import { BaseGameHandler } from "./BaseGameHandler";
+import { BaseGameHandler } from "@/game/handlers/BaseGameHandler";
 
 /**
  * Registry for managing game-specific handlers

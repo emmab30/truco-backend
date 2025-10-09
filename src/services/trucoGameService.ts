@@ -17,8 +17,8 @@ import {
   respondTruco,
   goToMazo,
   getAvailableActions
-} from '../game/truco';
-import { GameType } from '../constants';
+} from '@/game/truco';
+import { GameType } from '@/shared/constants';
 import { BaseGameService } from './baseGameService';
 
 /**

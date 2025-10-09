@@ -3,8 +3,8 @@
 // Available actions logic for Truco game
 // ============================================================================
 
-import { Game, Action, GamePhase, ActionType, EnvidoCall, TrucoCall, TrucoResponse } from "../types";
-import { ACTION_PRIORITIES } from "../constants";
+import { Game, Action, GamePhase, ActionType, EnvidoCall, TrucoCall, TrucoResponse } from "@/game/truco/types";
+import { ACTION_PRIORITIES } from "@/game/truco/constants";
 
 /**
  * Determine available actions for a player

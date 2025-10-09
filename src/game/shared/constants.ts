@@ -3,7 +3,7 @@
 // Constantes compartidas entre juegos de cartas españolas
 // ============================================================================
 
-import { Suit } from "./types";
+import { Suit } from "@/game/shared/types";
 
 /**
  * Spanish card suits

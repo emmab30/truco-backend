@@ -3,7 +3,7 @@
 // Constantes de configuración del servidor
 // ============================================================================
 
-import { ServerConfig } from "../types";
+import { ServerConfig } from "@/shared/types";
 
 export const SERVER_CONFIG: ServerConfig = {
     port: parseInt(process.env["PORT"] || "3001", 10),

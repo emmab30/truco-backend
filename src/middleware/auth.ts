@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { auth } from '../config/firebase';
+import { auth } from '@/config/firebase';
 
 export interface AuthenticatedRequest extends Request {
   user?: {
