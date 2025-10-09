@@ -57,7 +57,7 @@ router.get("/rooms/:id", (req: any, res: any) => {
         if (!room) {
             const response: ApiResponse = {
                 success: false,
-                error: "Room not found",
+                error: "Sala no encontrada",
             };
             return res.status(404).json(response);
         }

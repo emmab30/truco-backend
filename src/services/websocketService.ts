@@ -170,7 +170,7 @@ export class WebSocketService {
         // Get the room to determine game type
         const room = this.roomService.getRoom(roomId);
         if (!room) {
-            this.sendError(ws, "Room not found");
+            this.sendError(ws, "Sala no encontrada");
             return;
         }
 
@@ -387,7 +387,7 @@ export class WebSocketService {
 
             const room = this.roomService.joinRoomById(roomId, playerId, password);
             if (!room) {
-                this.sendError(ws, "Room not found, room is full, or invalid password");
+                this.sendError(ws, "Sala no encontrada, room is full, or invalid password");
                 return;
             }
 
@@ -456,7 +456,7 @@ export class WebSocketService {
         try {
             const room = this.roomService.getRoom(roomId);
             if (!room) {
-                this.sendError(ws, "Room not found");
+                this.sendError(ws, "Sala no encontrada");
                 return;
             }
 
@@ -588,6 +588,41 @@ export class WebSocketService {
         console.log(`📡 Broadcasting to room ${roomId}: ${message.type} to ${connections.size} connections`);
 
         connections.forEach((ws, playerId) => {
+            if (ws.readyState === 1) {
+                // WebSocket.OPEN
+                try {
+                    ws.send(messageStr);
+                    sentCount++;
+                } catch (error) {
+                    console.error(`❌ Error broadcasting to player ${playerId} in room ${roomId}:`, error);
+                    failedCount++;
+                }
+            } else {
+                console.warn(`⚠️ Skipping closed connection for player ${playerId} in room ${roomId}. State: ${ws.readyState}`);
+                failedCount++;
+            }
+        });
+
+        console.log(`📡 Room broadcast complete: ${sentCount} sent, ${failedCount} failed`);
+    }
+
+    /**
+     * Broadcast to all players in a room EXCEPT the specified player
+     */
+    public broadcastToRoomExcept(roomId: string, excludePlayerId: string, message: any): void {
+        const connections = this.roomService.getRoomConnections(roomId);
+        const messageStr = JSON.stringify(message);
+        let sentCount = 0;
+        let failedCount = 0;
+
+        console.log(`📡 Broadcasting to room ${roomId} (except ${excludePlayerId}): ${message.type} to ${connections.size - 1} connections`);
+
+        connections.forEach((ws, playerId) => {
+            if (playerId === excludePlayerId) {
+                console.log(`📡 Skipping player ${playerId} (excluded)`);
+                return; // Skip this player
+            }
+
             if (ws.readyState === 1) {
                 // WebSocket.OPEN
                 try {

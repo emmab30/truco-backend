@@ -447,14 +447,15 @@ export function cutWithCard(game: Game, playerId: string, cardId: string): Game 
     console.log("🎯 cutWithCard - setting isRoundClosed = true");
     console.log(`🎯 Cutting points: ${cuttingPoints}, Losing player points: ${losingPlayerPoints}`);
 
-    // Update both players' total scores
+    // Update both players' total scores and remove cutting card from winner's hand
     const updatedPlayers = game.players.map((p) => {
         if (p.id === playerId) {
-            // Winner gets positive points
+            // Winner gets positive points AND remove the cutting card
             const newScore = (p.totalScore || 0) + cuttingPoints;
             console.log(`🎯 Cutter ${p.name} score: ${p.totalScore || 0} → ${newScore} (+${cuttingPoints})`);
             return {
                 ...p,
+                cards: p.cards.filter((c) => c.id !== cardId), // Remove the cutting card
                 totalScore: newScore,
             };
         } else if (p.id === losingPlayer?.id) {

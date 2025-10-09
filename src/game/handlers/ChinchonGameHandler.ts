@@ -129,7 +129,8 @@ export class ChinchonGameHandler extends AbstractGameHandler {
                 });
 
                 const source = fromDiscardPile ? "del descarte" : "del mazo";
-                this.sendSpeechBubble(roomId, playerId, `Robó una carta ${source}`, "Sistema", 0);
+                // Send speech bubble to OTHER players only, not to the player who drew the card
+                this.sendSpeechBubbleToOthers(roomId, playerId, `Robó una carta ${source}`, "Sistema", 0);
             } else {
                 // Send error message if the action failed
                 this.wsService.sendError(ws, "No se puede robar carta en este momento");
@@ -169,7 +170,8 @@ export class ChinchonGameHandler extends AbstractGameHandler {
                     },
                 });
 
-                this.sendSpeechBubble(roomId, playerId, "Descartó una carta", "Sistema", 0);
+                // Send speech bubble to OTHER players only, not to the player who discarded
+                this.sendSpeechBubbleToOthers(roomId, playerId, "Descartó una carta", "Sistema", 0);
             } else {
                 // Send error message if the action failed
                 this.wsService.sendError(ws, "No se puede descartar esta carta en este momento");
@@ -340,6 +342,22 @@ export class ChinchonGameHandler extends AbstractGameHandler {
             type: WEBSOCKET_MESSAGE_TYPES.SPEECH_BUBBLE,
             data: {
                 playerId,
+                message,
+                playerName,
+                priority,
+            },
+        });
+    }
+
+    /**
+     * Send speech bubble to all players EXCEPT the specified player
+     */
+    private sendSpeechBubbleToOthers(roomId: string, excludePlayerId: string, message: string, playerName: string, priority: number = 0): void {
+        // Use the new broadcastToRoomExcept method
+        this.wsService.broadcastToRoomExcept(roomId, excludePlayerId, {
+            type: WEBSOCKET_MESSAGE_TYPES.SPEECH_BUBBLE,
+            data: {
+                playerId: excludePlayerId, // Keep original playerId so recipients know who performed the action
                 message,
                 playerName,
                 priority,
