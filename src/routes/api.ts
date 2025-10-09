@@ -2,7 +2,7 @@ import { Router } from "express";
 import { TrucoGameService } from "../services/trucoGameService";
 import { ChinchonGameService } from "../services/chinchonGameService";
 import { RoomService } from "../services/roomService";
-import { ApiResponse } from "../types";
+import { ApiResponse } from "../shared/types";
 import { RoomResponse, GameResponse } from "../game/truco/types";
 import authRoutes from "./auth";
 // import { optionalAuth } from "../middleware/auth";

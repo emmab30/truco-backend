@@ -1,4 +1,4 @@
-import { WebSocketMessage } from "../../types";
+import { WebSocketMessage } from "../../shared/types";
 
 /**
  * Base interface for game-specific WebSocket handlers

@@ -1,6 +1,12 @@
-import { Game, Player, Hand, Round, Card, Team, GamePhase, EnvidoCall, TrucoCall, EnvidoResponse, TrucoResponse } from "./types";
-import { POINTS, GAME_CONFIG } from "../../constants";
-import { createCardFromString, createShuffledDeck, getHandWinnerName, countRoundWins, determineRoundWinner, determineHandWinner, generateId } from "../../utils";
+// ============================================================================
+// TRUCO GAME LOGIC
+// Core game logic for the Truco card game
+// ============================================================================
+
+import { Game, Player, Hand, Round, Card, Team, GamePhase, EnvidoCall, TrucoCall, EnvidoResponse, TrucoResponse } from "../types";
+import { POINTS, TRUCO_GAME_CONFIG } from "../constants";
+import { createCardFromString, createShuffledDeck, getHandWinnerName, countRoundWins, determineRoundWinner, determineHandWinner } from "../utils";
+import { generateId } from "../../../shared/utils/common";
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -75,7 +81,7 @@ export function createGame(maxScore: number = 15): Game {
         players: [],
         currentHand: null,
         gameConfig: {
-            ...GAME_CONFIG,
+            ...TRUCO_GAME_CONFIG,
             maxScore: maxScore,
         },
         teamScores: [0, 0],
@@ -352,9 +358,9 @@ export function playCard(game: Game, playerId: string, cardId: string): Game {
 
         // Check if hand is complete
         const roundWins = countRoundWins(updatedRounds, updatedPlayers);
-        const hasWinner = Object.values(roundWins).some((wins) => wins >= GAME_CONFIG.roundsToWinHand);
+        const hasWinner = Object.values(roundWins).some((wins) => wins >= TRUCO_GAME_CONFIG.roundsToWinHand);
 
-        if (hasWinner || game.currentHand!.currentRound >= GAME_CONFIG.maxRoundsPerHand - 1) {
+        if (hasWinner || game.currentHand!.currentRound >= TRUCO_GAME_CONFIG.maxRoundsPerHand - 1) {
             // Hand is complete
             const handWinnerString = determineHandWinner(updatedRounds, updatedPlayers);
             const handWinner = handWinnerString === "team1" ? Team.TEAM_1 : Team.TEAM_2;
@@ -871,3 +877,4 @@ export function goToMazo(game: Game, playerId: string): Game {
         phase: GamePhase.HAND_END,
     };
 }
+

@@ -1,0 +1,69 @@
+// ============================================================================
+// WEBSOCKET MESSAGE TYPES
+// Constantes compartidas para todos los juegos
+// ============================================================================
+
+export const WEBSOCKET_MESSAGE_TYPES = {
+    // ========== Client to Server - ROOM MANAGEMENT ==========
+    REGISTER_PLAYER: "REGISTER_PLAYER",
+    CREATE_ROOM: "CREATE_ROOM",
+    JOIN_ROOM: "JOIN_ROOM",
+    JOIN_ROOM_BY_ID: "JOIN_ROOM_BY_ID",
+    GET_ROOM_INFO: "GET_ROOM_INFO",
+    LEAVE_ROOM: "LEAVE_ROOM",
+    GET_ROOMS: "GET_ROOMS",
+
+    // ========== Server to Client - ROOM MANAGEMENT ==========
+    PLAYER_REGISTERED: "PLAYER_REGISTERED",
+    ROOM_CREATED: "ROOM_CREATED",
+    ROOM_JOINED: "ROOM_JOINED",
+    ROOM_INFO: "ROOM_INFO",
+    PLAYER_JOINED: "PLAYER_JOINED",
+    PLAYER_LEFT: "PLAYER_LEFT",
+    PLAYER_DISCONNECTED: "PLAYER_DISCONNECTED",
+    ROOM_LIST_UPDATED: "ROOM_LIST_UPDATED",
+    
+    // ========== Client to Server - TRUCO SPECIFIC ==========
+    START_GAME: "START_GAME",
+    DEAL_NEW_HAND: "DEAL_NEW_HAND",
+    PLAY_CARD: "PLAY_CARD",
+    CALL_ENVIDO: "CALL_ENVIDO",
+    RESPOND_ENVIDO: "RESPOND_ENVIDO",
+    CALL_TRUCO: "CALL_TRUCO",
+    RESPOND_TRUCO: "RESPOND_TRUCO",
+    GO_TO_MAZO: "GO_TO_MAZO",
+
+    // ========== Server to Client - TRUCO SPECIFIC ==========
+    GAME_STARTED: "GAME_STARTED",
+    CARD_PLAYED: "CARD_PLAYED",
+    ENVIDO_CALLED: "ENVIDO_CALLED",
+    ENVIDO_RESPONDED: "ENVIDO_RESPONDED",
+    TRUCO_CALLED: "TRUCO_CALLED",
+    TRUCO_RESPONDED: "TRUCO_RESPONDED",
+    WENT_TO_MAZO: "WENT_TO_MAZO",
+    HAND_END: "HAND_END",
+    NEW_HAND_DEALT: "NEW_HAND_DEALT",
+    NEW_ROUND_DEALT: "NEW_ROUND_DEALT",
+
+    // ========== Client to Server - CHINCHÓN SPECIFIC ==========
+    DRAW_CARD: "DRAW_CARD",
+    DISCARD_CARD: "DISCARD_CARD",
+    CLOSE_ROUND: "CLOSE_ROUND",
+    CUT_WITH_CARD: "CUT_WITH_CARD",
+    SHOW_COMBINATIONS: "SHOW_COMBINATIONS",
+    REORDER_CARDS: "REORDER_CARDS",
+    START_NEXT_ROUND: "START_NEXT_ROUND",
+
+    // ========== Server to Client - CHINCHÓN SPECIFIC ==========
+    CARD_DRAWN: "CARD_DRAWN",
+    CARD_DISCARDED: "CARD_DISCARDED",
+    ROUND_CLOSED: "ROUND_CLOSED",
+    COMBINATIONS_SHOWN: "COMBINATIONS_SHOWN",
+    CARDS_REORDERED: "CARDS_REORDERED",
+    GAME_UPDATE: "GAME_UPDATE",
+
+    // ========== Common Messages ==========
+    SPEECH_BUBBLE: "SPEECH_BUBBLE",
+    ERROR: "ERROR",
+} as const;
+

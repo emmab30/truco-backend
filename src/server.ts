@@ -8,7 +8,7 @@ import helmet from "helmet";
 import { createServer } from "http";
 import { WebSocketServer } from "ws";
 
-import { SERVER_CONFIG } from "./constants";
+import { SERVER_CONFIG } from "./shared/constants";
 import { WebSocketService } from "./services/websocketService";
 import { TrucoGameService } from "./services/trucoGameService";
 import { ChinchonGameService } from "./services/chinchonGameService";
@@ -112,7 +112,7 @@ wss.on("connection", (ws, req) => {
         wsService.handleDisconnect(ws);
     });
 
-    ws.on("error", (error) => {
+    ws.on("error", (error: any) => {
         console.error("❌ WebSocket error:", error);
         console.error("❌ Error details:", {
             message: error.message,

@@ -5,10 +5,7 @@ import {
   EnvidoCall,
   TrucoCall,
   EnvidoResponse,
-  TrucoResponse
-} from '../game/truco/types';
-import { GameType } from '../constants';
-import {
+  TrucoResponse,
   addPlayer,
   startGame,
   dealNewHand,
@@ -18,9 +15,10 @@ import {
   respondEnvido,
   callTruco,
   respondTruco,
-  goToMazo
-} from '../game/truco/gameLogic';
-import { getAvailableActions } from '../game/truco/actions';
+  goToMazo,
+  getAvailableActions
+} from '../game/truco';
+import { GameType } from '../constants';
 import { BaseGameService } from './baseGameService';
 
 /**

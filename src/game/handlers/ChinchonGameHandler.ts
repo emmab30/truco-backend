@@ -1,5 +1,5 @@
-import { WebSocketMessage } from "../../types";
-import { WEBSOCKET_MESSAGE_TYPES, GameType } from "../../constants";
+import { WebSocketMessage } from "../../shared/types";
+import { WEBSOCKET_MESSAGE_TYPES, GameType } from "../../shared/constants";
 import { AbstractGameHandler } from "./BaseGameHandler";
 import { ChinchonGameService } from "../../services/chinchonGameService";
 import { RoomService } from "../../services/roomService";
@@ -70,7 +70,8 @@ export class ChinchonGameHandler extends AbstractGameHandler {
             }
         } catch (error) {
             console.error(`❌ Error in Chinchón handler for ${type}:`, error);
-            this.wsService.sendError(ws, `Error processing ${type}: ${error.message}`);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            this.wsService.sendError(ws, `Error processing ${type}: ${errorMessage}`);
         }
     }
 

@@ -1,5 +1,10 @@
-import { Game, Action, GamePhase, ActionType, EnvidoCall, TrucoCall, TrucoResponse } from "./types";
-import { ACTION_PRIORITIES } from "../../constants";
+// ============================================================================
+// TRUCO ACTIONS
+// Available actions logic for Truco game
+// ============================================================================
+
+import { Game, Action, GamePhase, ActionType, EnvidoCall, TrucoCall, TrucoResponse } from "../types";
+import { ACTION_PRIORITIES } from "../constants";
 
 /**
  * Determine available actions for a player
@@ -344,3 +349,4 @@ export function validateAction(game: Game, playerId: string, actionType: ActionT
 
     return { valid: true };
 }
+

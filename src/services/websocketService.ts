@@ -1,5 +1,5 @@
-import { WebSocketMessage } from "../types";
-import { WEBSOCKET_MESSAGE_TYPES, GameType } from "../constants";
+import { WebSocketMessage } from "../shared/types";
+import { WEBSOCKET_MESSAGE_TYPES, GameType } from "../shared/constants";
 import { TrucoGameService } from "./trucoGameService";
 import { ChinchonGameService } from "./chinchonGameService";
 import { RoomService } from "./roomService";

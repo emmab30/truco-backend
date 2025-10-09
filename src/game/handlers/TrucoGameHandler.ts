@@ -1,5 +1,5 @@
-import { WebSocketMessage } from "../../types";
-import { WEBSOCKET_MESSAGE_TYPES, GAME_DELAY_NEW_HAND, GameType } from "../../constants";
+import { WebSocketMessage } from "../../shared/types";
+import { WEBSOCKET_MESSAGE_TYPES, GAME_DELAY_NEW_HAND, GameType } from "../../shared/constants";
 import { AbstractGameHandler } from "./BaseGameHandler";
 import { TrucoGameService } from "../../services/trucoGameService";
 import { RoomService } from "../../services/roomService";

@@ -1,32 +1,11 @@
-import { Game, Player, Hand, Card, Team, GamePhase, ActionType, Combination, Suit, GameConfig } from "./types";
-import { generateId } from "../../utils";
+import { Game, Player, Hand, Card, Team, GamePhase, ActionType, Combination, Suit } from "../types";
+import { CHINCHON_CONFIG, CHINCHON_VALUES } from "../constants";
+import { generateId } from "../../../shared/utils/common";
+import { generateStableCombinationId } from "../utils";
 
 // ============================================================================
 // CHINCHÓN GAME LOGIC
 // ============================================================================
-
-// Chinchón-specific constants
-export const CHINCHON_CONFIG: GameConfig = {
-    maxPlayers: 6,
-    maxScore: 100, // Points to eliminate a player
-    cardsPerPlayer: 7,
-    maxRoundsPerHand: 10,
-    roundsToWinHand: 1,
-};
-
-// Card values for Chinchón scoring (figures are worth 10 points)
-const CHINCHON_VALUES: { [key: number]: number } = {
-    1: 1,
-    2: 2,
-    3: 3,
-    4: 4,
-    5: 5,
-    6: 6,
-    7: 7,
-    10: 10,
-    11: 10,
-    12: 10,
-};
 
 // ============================================================================
 // GAME CREATION AND INITIALIZATION
@@ -764,17 +743,3 @@ export function calculatePlayerScore(player: Player, combinations: Combination[]
     return uncombinedCards.reduce((sum: number, card: any) => sum + (card.chinchonValue || 0), 0);
 }
 
-/**
- * Generate a stable combination ID based on the cards in the combination
- * This ensures the same combination always has the same ID, preventing re-animations
- */
-export function generateStableCombinationId(cards: Card[]): string {
-    // Sort cards by ID to ensure consistent ordering
-    const sortedCards = [...cards].sort((a, b) => a.id.localeCompare(b.id));
-    
-    // Create a stable ID by joining card IDs with a separator
-    const cardIds = sortedCards.map(card => card.id).join('-');
-    
-    // Add a prefix to distinguish from regular card IDs
-    return `combo-${cardIds}`;
-}

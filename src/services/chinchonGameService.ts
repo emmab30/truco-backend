@@ -1,6 +1,17 @@
-import { Game, Team, GameResponse } from "../game/chinchon/types";
+import { 
+    Game, 
+    Team, 
+    GameResponse,
+    addPlayer,
+    startGame,
+    dealNewHand,
+    drawCard,
+    discardCard,
+    closeRound,
+    cutWithCard,
+    calculatePlayerScore
+} from "../game/chinchon";
 import { GameType } from "../constants";
-import { addPlayer, startGame, dealNewHand, drawCard, discardCard, closeRound, cutWithCard, calculatePlayerScore } from "../game/chinchon/gameLogic";
 import { BaseGameService } from "./baseGameService";
 
 /**
