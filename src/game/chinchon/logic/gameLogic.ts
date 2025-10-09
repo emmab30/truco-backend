@@ -1,4 +1,4 @@
-import { Game, Player, Hand, Card, Team, GamePhase, ActionType, Combination, Suit } from "@/game/chinchon/types";
+import { Game, Player, Hand, Card, Team, GamePhase, ActionType, Combination, Suit, ChinchonState } from "@/game/chinchon/types";
 import { CHINCHON_CONFIG, CHINCHON_VALUES, VALUES_CHINCHON } from "@/game/chinchon/constants";
 import { generateId } from "@/shared/utils/common";
 import { generateStableCombinationId } from "@/game/chinchon/utils";
@@ -58,10 +58,7 @@ export function startGame(game: Game): Game {
     }
 
     const updatedGame = dealNewHand(game);
-    return {
-        ...updatedGame,
-        phase: GamePhase.DEALING,
-    };
+    return updatedGame;
 }
 
 // ============================================================================
@@ -149,24 +146,36 @@ export function drawCard(game: Game, playerId: string, fromDiscardPile: boolean)
         return game; // Not player's turn
     }
 
-    const chinchonState = game.currentHand.chinchonState;
+    let chinchonState = game.currentHand.chinchonState;
 
     // If player already drew a card this turn, they cannot draw another
     if (chinchonState.hasDrawnCard) {
         return game; // Player already drew a card, must discard
     }
 
+    console.log("🎴 Alzó una carta");
+    console.log(`📊 Deck size ANTES: ${chinchonState.deck.length}`);
+    console.log(`📊 Discard pile size ANTES: ${chinchonState.discardPile.length}`);
+    console.log(`📊 Trying to draw from: ${fromDiscardPile ? "DISCARD PILE" : "DECK"}`);
+
     let drawnCard: Card | null = null;
 
     if (fromDiscardPile && chinchonState.discardPile.length > 0) {
         // Draw from discard pile
         drawnCard = chinchonState.discardPile.pop() || null;
-    } else if (chinchonState.deck.length > 0) {
-        // Draw from deck
-        drawnCard = chinchonState.deck.pop() || null;
+    } else {
+        // If deck is empty or has only 1 card left, recycle discard pile first
+        if (chinchonState.deck.length <= 1 && chinchonState.discardPile.length > 1) {
+            chinchonState = recycleDiscardPile(chinchonState);
+        }
+
+        if (chinchonState.deck.length > 0) {
+            drawnCard = chinchonState.deck.pop() || null;
+        }
     }
 
     if (!drawnCard) {
+        console.log("❌ Failed to draw card - no cards available");
         return game; // No cards available
     }
 
@@ -181,19 +190,15 @@ export function drawCard(game: Game, playerId: string, fromDiscardPile: boolean)
         hasDrawnCard: true, // Player must now discard a card
     };
 
-    // Update available actions for current player
-    const currentPlayer = updatedPlayers.find((p) => p.id === playerId);
-    if (currentPlayer) {
-        currentPlayer.availableActions = getAvailableActions(game, playerId);
-    }
-
     // Detect combinations for the player who drew the card
+    const currentPlayer = updatedPlayers.find((p) => p.id === playerId);
     if (currentPlayer) {
         const combinations = findCombinations(currentPlayer.cards as Card[]);
         updatedChinchonState.combinations.set(playerId, combinations);
     }
 
-    return {
+    // Build the updated game state
+    const updatedGame = {
         ...game,
         players: updatedPlayers,
         currentHand: {
@@ -201,6 +206,13 @@ export function drawCard(game: Game, playerId: string, fromDiscardPile: boolean)
             chinchonState: updatedChinchonState,
         },
     };
+
+    // Update available actions for current player using the UPDATED game state
+    if (currentPlayer) {
+        currentPlayer.availableActions = getAvailableActions(updatedGame, playerId);
+    }
+
+    return updatedGame;
 }
 
 export function discardCard(game: Game, playerId: string, cardId: string): Game {
@@ -312,7 +324,10 @@ export function discardCard(game: Game, playerId: string, cardId: string): Game 
             });
 
             console.log("🎯 Automatic win - RETURNING GAME WITH isRoundClosed = true");
-            console.log("🎯 Updated players with scores:", updatedPlayersWithScore.map(p => `${p.name}: ${p.totalScore}`));
+            console.log(
+                "🎯 Updated players with scores:",
+                updatedPlayersWithScore.map((p) => `${p.name}: ${p.totalScore}`)
+            );
             return {
                 ...game,
                 players: updatedPlayersWithScore,
@@ -366,7 +381,10 @@ export function discardCard(game: Game, playerId: string, cardId: string): Game 
             });
 
             console.log("🎯 Normal win - RETURNING GAME WITH isRoundClosed = true");
-            console.log("🎯 Updated players with scores:", updatedPlayersWithScore.map(p => `${p.name}: ${p.totalScore}`));
+            console.log(
+                "🎯 Updated players with scores:",
+                updatedPlayersWithScore.map((p) => `${p.name}: ${p.totalScore}`)
+            );
             return {
                 ...game,
                 players: updatedPlayersWithScore,
@@ -389,21 +407,14 @@ export function discardCard(game: Game, playerId: string, cardId: string): Game 
 }
 
 export function cutWithCard(game: Game, playerId: string, cardId: string): Game {
-    console.log("Ke paso", game.currentHand);
-    if (!game.currentHand || !game.currentHand.chinchonState) {
-        return game;
-    }
+    if (!game.currentHand || !game.currentHand.chinchonState) return game;
 
     const player = game.players.find((p) => p.id === playerId);
-    if (!player) {
-        return game;
-    }
+    if (!player) return game;
 
     // Find the card to cut with
     const cardToCut = player.cards.find((card) => card.id === cardId);
-    if (!cardToCut) {
-        return game;
-    }
+    if (!cardToCut) return game;
 
     // Get player's combinations to determine scoring
     const combinations = game.currentHand.chinchonState.combinations.get(playerId) || [];
@@ -412,11 +423,16 @@ export function cutWithCard(game: Game, playerId: string, cardId: string): Game 
 
     // Check if player has 2 combinations of 3 cards each and cutting with card < 5
     const hasTwoCombinationsOfThree = combinations.length === 2 && combinations.every((combo) => combo.cards.length === 3);
-
     if (hasTwoCombinationsOfThree && (cardToCut.chinchonValue || 0) < 5) {
-        // Score the value of the cutting card (positive points)
-        cuttingPoints = cardToCut.chinchonValue || 0;
+        // Find the remaining card (not in combinations and not the cutting card)
+        const combinedCardIds = new Set(combinations.flatMap((c) => c.cards.map((card) => card.id)));
+        const remainingCard = player.cards.find((card) => !combinedCardIds.has(card.id) && card.id !== cardId);
+
+        // Score the value of the remaining card
+        cuttingPoints = remainingCard ? remainingCard.chinchonValue || 0 : 0;
+        console.log(`🎯 Cutting with card < 5, remaining card value: ${cuttingPoints}`);
     } else {
+        console.log("🎯 No cutting points");
         // Standard cutting with 2 combinations = -10 points
         cuttingPoints = -10;
     }
@@ -470,7 +486,10 @@ export function cutWithCard(game: Game, playerId: string, cardId: string): Game 
         return p;
     });
 
-    console.log("🎯 Updated players with scores:", updatedPlayers.map(p => `${p.name}: ${p.totalScore}`));
+    console.log(
+        "🎯 Updated players with scores:",
+        updatedPlayers.map((p) => `${p.name}: ${p.totalScore}`)
+    );
 
     return {
         ...game,
@@ -562,7 +581,10 @@ export function closeRound(game: Game, playerId: string): Game {
         return p;
     });
 
-    console.log("🎯 Updated players with scores:", updatedPlayers.map(p => `${p.name}: ${p.totalScore}`));
+    console.log(
+        "🎯 Updated players with scores:",
+        updatedPlayers.map((p) => `${p.name}: ${p.totalScore}`)
+    );
 
     return {
         ...game,
@@ -679,6 +701,51 @@ export function createShuffledDeck(): Card[] {
     return deck;
 }
 
+/**
+ * Recycle discard pile back into the deck
+ * Takes all cards from discard pile except the last one (visible card),
+ * shuffles them, and adds them back to the deck
+ */
+export function recycleDiscardPile(chinchonState: ChinchonState): ChinchonState {
+    console.log("♻️ === STARTING RECYCLE PROCESS ===");
+    console.log(`♻️ Current deck size: ${chinchonState.deck.length}`);
+    console.log(`♻️ Current discard pile size: ${chinchonState.discardPile.length}`);
+
+    // Keep the last card visible on the discard pile
+    const visibleCard = chinchonState.discardPile[chinchonState.discardPile.length - 1];
+    console.log(`♻️ Visible card to keep: ${visibleCard?.displayValue} of ${visibleCard?.suit}`);
+
+    // Take all other cards from the discard pile
+    const cardsToRecycle = chinchonState.discardPile.slice(0, -1).filter((card: Card | undefined): card is Card => card !== undefined);
+    console.log(`♻️ Cards to recycle: ${cardsToRecycle.length}`);
+
+    // Shuffle the cards to recycle
+    for (let i = cardsToRecycle.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const temp = cardsToRecycle[i];
+        if (temp && cardsToRecycle[j]) {
+            cardsToRecycle[i] = cardsToRecycle[j];
+            cardsToRecycle[j] = temp;
+        }
+    }
+    console.log(`♻️ Cards shuffled successfully`);
+
+    // Add recycled cards to the deck
+    const newDeck = [...chinchonState.deck, ...cardsToRecycle];
+    console.log(`♻️ New deck size after adding recycled cards: ${newDeck.length}`);
+
+    // Update discard pile to only contain the visible card
+    const newDiscardPile = visibleCard ? [visibleCard] : [];
+    console.log(`♻️ New discard pile size: ${newDiscardPile.length}`);
+    console.log("♻️ === RECYCLE COMPLETE ===");
+
+    return {
+        ...chinchonState,
+        deck: newDeck,
+        discardPile: newDiscardPile,
+    };
+}
+
 export function getNextPlayer(players: Player[], currentPlayerId: string): string {
     const currentIndex = players.findIndex((p) => p.id === currentPlayerId);
     const nextIndex = (currentIndex + 1) % players.length;
@@ -702,39 +769,10 @@ export function getAvailableActions(game: Game, playerId: string): any[] {
         return actions;
     }
 
-    // If player has drawn a card, they MUST discard
-    if (chinchonState.hasDrawnCard) {
-        // Player must discard a card (they have 8 cards now)
-        actions.push({
-            type: ActionType.DISCARD_CARD,
-            label: "Descartar carta",
-            priority: 1,
-        });
-        return actions;
-    }
-
-    // If player hasn't drawn a card yet, they can draw from deck or discard pile
-    if (chinchonState.deck.length > 0) {
-        actions.push({
-            type: ActionType.DRAW_FROM_DECK,
-            label: "Robar del mazo",
-            priority: 1,
-        });
-    }
-    if (chinchonState.discardPile.length > 0) {
-        actions.push({
-            type: ActionType.DRAW_FROM_DISCARD,
-            label: "Robar del descarte",
-            priority: 1,
-        });
-    }
-
     // Check for cutting opportunities
     const combinations = chinchonState.combinations.get(playerId) || [];
     const combinedCardIds = new Set(combinations.flatMap((c) => c.cards.map((card) => card.id)));
     const uncombinedCards = player.cards.filter((card) => !combinedCardIds.has(card.id));
-
-    console.log(combinations);
 
     // If player has 2+ combinations, they can cut
     if (combinations.length >= 2) {
