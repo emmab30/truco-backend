@@ -774,10 +774,13 @@ export function getAvailableActions(game: Game, playerId: string): any[] {
     const combinedCardIds = new Set(combinations.flatMap((c) => c.cards.map((card) => card.id)));
     const uncombinedCards = player.cards.filter((card) => !combinedCardIds.has(card.id));
 
+    // The user can only cut with card less than 5
+    const cardsAllowedToCut = uncombinedCards.filter((card) => card.chinchonValue < 5);
+
     // If player has 2+ combinations, they can cut
-    if (combinations.length >= 2) {
+    if (combinations.length >= 2 && cardsAllowedToCut.length > 0) {
         // Add cutting actions for each uncombined card
-        uncombinedCards.forEach((card) => {
+        cardsAllowedToCut.forEach((card) => {
             actions.push({
                 type: ActionType.CUT_WITH_CARD,
                 label: `¡Cortar con ${card.displayValue}!`,
