@@ -79,6 +79,7 @@ export interface Game {
     id: string;
     phase: GamePhase;
     players: Player[];
+    iaMode?: boolean;
     currentHand: Hand | null;
     gameConfig: GameConfig;
     teamScores: [number, number];

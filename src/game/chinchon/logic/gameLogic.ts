@@ -91,7 +91,7 @@ export function dealNewHand(game: Game): Game {
     // Determine who starts this round (rotate dealer)
     const currentHandNumber = (game.currentHand?.number || 0) + 1;
     const dealerIndex = (currentHandNumber - 1) % players.length;
-    const startingPlayerIndex = dealerIndex; // Dealer starts
+    const startingPlayerIndex = game?.iaMode ? 0 : dealerIndex; // Dealer starts unless IA mode is enabled
 
     const newHand: Hand = {
         number: currentHandNumber,
@@ -158,13 +158,7 @@ export function drawCard(game: Game, playerId: string, fromDiscardPile: boolean)
         return game; // Player already drew a card, must discard
     }
 
-    console.log("🎴 Alzó una carta");
-    console.log(`📊 Deck size ANTES: ${chinchonState.deck.length}`);
-    console.log(`📊 Discard pile size ANTES: ${chinchonState.discardPile.length}`);
-    console.log(`📊 Trying to draw from: ${fromDiscardPile ? "DISCARD PILE" : "DECK"}`);
-
     let drawnCard: Card | null = null;
-
     if (fromDiscardPile && chinchonState.discardPile.length > 0) {
         // Draw from discard pile
         drawnCard = chinchonState.discardPile.pop() || null;
@@ -726,15 +720,6 @@ export function getAvailableActions(game: Game, playerId: string): any[] {
     const combinations = chinchonState.combinations.get(playerId) || [];
     const combinedCardIds = new Set(combinations.flatMap((c: any) => c.cards.map((card: any) => card.id)));
     const uncombinedCards = player.cards.filter((card: any) => !combinedCardIds.has(card.id));
-
-    console.log("🎮 getAvailableActions:", {
-        playerId: player.name,
-        totalCards: player.cards.length,
-        combinationsCount: combinations.length,
-        combinedCards: combinations.reduce((sum: number, c: any) => sum + c.cards.length, 0),
-        uncombinedCards: uncombinedCards.length,
-        uncombinedValues: uncombinedCards.map((c: any) => c.displayValue),
-    });
 
     // Check for cutting opportunities
     // Player has 8 cards after drawing

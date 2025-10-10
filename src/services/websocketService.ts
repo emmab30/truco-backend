@@ -191,7 +191,7 @@ export class WebSocketService {
      */
     handleDisconnect(ws: any): void {
         console.log(`🔍 Handling disconnect for WebSocket connection`);
-        
+
         // Find player by WebSocket connection
         for (const [playerId, connection] of this.playerConnections.entries()) {
             if (connection === ws) {
@@ -262,7 +262,18 @@ export class WebSocketService {
     }
 
     private handleCreateRoom(ws: any, data: any): void {
-        const { roomName, playerName, playerId, maxPlayers = 2, isPrivate = false, password, maxScore = 15, gameType = GameType.TRUCO } = data;
+        const {
+            roomName,
+            playerName,
+            playerId,
+            maxPlayers = 2,
+            isPrivate = false,
+            password,
+            maxScore = 15,
+            gameType = GameType.TRUCO,
+            hasAI = false,
+            aiDifficulty = "medium",
+        } = data;
 
         try {
             const room = this.roomService.createRoom(roomName, playerName, playerId, maxPlayers, isPrivate, password, maxScore, gameType);
@@ -273,7 +284,24 @@ export class WebSocketService {
 
             // Get the appropriate game service based on game type
             const gameService = this.getGameService(room.gameType);
-            
+
+            // If AI mode is enabled for Chinchon, add AI player and start game automatically
+            if (hasAI && gameType === GameType.CHINCHON) {
+                console.log(`🤖 Creating AI player for room ${room.id} with difficulty: ${aiDifficulty}`);
+
+                // Add AI player to the game
+                (gameService as any).addAIPlayerToGame(room.game.id, aiDifficulty);
+
+                // Start the game immediately
+                const startedGame = gameService.startGame(room.game.id);
+                this.roomService.updateRoomGame(room.id, startedGame);
+                this.roomService.setRoomActive(room.id, true);
+                room.game = startedGame;
+                room.isActive = true;
+
+                console.log(`🎮 AI game started automatically for room ${room.id}`);
+            }
+
             this.sendMessage(ws, {
                 type: WEBSOCKET_MESSAGE_TYPES.ROOM_CREATED,
                 data: {
@@ -286,6 +314,21 @@ export class WebSocketService {
                 type: WEBSOCKET_MESSAGE_TYPES.ROOM_LIST_UPDATED,
                 data: { rooms: this.roomService.getAllRooms() },
             });
+
+            // If game was started with AI, trigger AI's first move if needed
+            if (hasAI && gameType === GameType.CHINCHON && room.isActive) {
+                const gameHandler = this.gameHandlerRegistry.getHandler(gameType);
+                if (gameHandler) {
+                    // Trigger AI turn check after a short delay to ensure client receives game state first
+                    setTimeout(() => {
+                        const currentRoom = this.roomService.getRoom(room.id);
+                        if (currentRoom?.game?.currentHand?.chinchonState?.currentPlayerId?.startsWith("ia_")) {
+                            console.log(`🤖 Triggering initial AI turn for room ${room.id}`);
+                            (gameHandler as any).processAITurnIfNeeded?.(room.id);
+                        }
+                    }, 500);
+                }
+            }
         } catch (error) {
             console.log(`Error!`, error);
             this.sendError(ws, "Error creating room");

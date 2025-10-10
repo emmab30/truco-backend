@@ -1,26 +1,24 @@
-import { 
-    Game, 
-    Team, 
-    GameResponse,
-    addPlayer,
-    startGame,
-    dealNewHand,
-    drawCard,
-    discardCard,
-    closeRound,
-    cutWithCard,
-    calculatePlayerScore
-} from "@/game/chinchon";
+import { Game, Team, GameResponse, addPlayer, startGame, dealNewHand, drawCard, discardCard, closeRound, cutWithCard, calculatePlayerScore } from "@/game/chinchon";
 import { GameType } from "@/shared/constants";
 import { BaseGameService } from "./baseGameService";
+import { ChinchonAIService, AIDifficulty } from "@/game/chinchon/ai/aiService";
 
 /**
  * Chinchón Game Service
  * Handles all Chinchón-specific game operations
  */
 export class ChinchonGameService extends BaseGameService {
+    private aiService: ChinchonAIService | null = null;
+
     getGameType(): string {
         return GameType.CHINCHON;
+    }
+
+    /**
+     * Set AI service instance (injected from handler)
+     */
+    setAIService(aiService: ChinchonAIService): void {
+        this.aiService = aiService;
     }
 
     /**
@@ -34,6 +32,32 @@ export class ChinchonGameService extends BaseGameService {
 
         const updatedGame = addPlayer(game, playerId, playerName, team);
         this.updateGame(updatedGame);
+        return updatedGame;
+    }
+
+    /**
+     * Add an AI player to a game
+     * This is a convenience method that creates an AI player and adds it to the game
+     */
+    addAIPlayerToGame(gameId: string, difficulty: AIDifficulty = "medium"): Game {
+        const game = this.getGame(gameId);
+        if (!game) {
+            throw new Error("Game not found");
+        }
+
+        if (!this.aiService) {
+            throw new Error("AI Service not initialized. Call setAIService first.");
+        }
+
+        // Create AI player using the AI service
+        const aiPlayer = this.aiService.createAIPlayer(game, difficulty);
+
+        // Add AI player to game
+        const updatedGame = addPlayer(game, aiPlayer.id, aiPlayer.name, aiPlayer.team);
+        updatedGame.iaMode = true;
+        this.updateGame(updatedGame);
+
+        console.log(`🤖 Added AI player ${aiPlayer.name} (${aiPlayer.id}) to game ${gameId}`);
         return updatedGame;
     }
 
@@ -269,7 +293,7 @@ export class ChinchonGameService extends BaseGameService {
     getGameWithActions(gameId: string): any {
         const game = this.getGame(gameId);
         if (!game) {
-            throw new Error('Game not found');
+            throw new Error("Game not found");
         }
 
         const playersWithActions = game.players.map((player: any) => {
@@ -278,25 +302,21 @@ export class ChinchonGameService extends BaseGameService {
                 ...player,
                 points: player.totalScore || 0, // Normalize points field for frontend compatibility
                 availableActions: this.getAvailableActions(gameId, player.id),
-                combinations: combinations
+                combinations: combinations,
             };
             console.log(`📊 Mapping player ${player.name}: totalScore=${player.totalScore} → points=${mappedPlayer.points}`);
             return mappedPlayer;
         });
 
         // Serialize the chinchonState for WebSocket transmission
-        const serializedChinchonState = game.currentHand?.chinchonState ? {
-            ...game.currentHand.chinchonState,
-            combinations: game.currentHand.chinchonState.combinations 
-                ? Object.fromEntries(game.currentHand.chinchonState.combinations)
-                : {},
-            roundScores: game.currentHand.chinchonState.roundScores
-                ? Object.fromEntries(game.currentHand.chinchonState.roundScores)
-                : {},
-            playersReadyForNextRound: game.currentHand.chinchonState.playersReadyForNextRound 
-                ? Array.from(game.currentHand.chinchonState.playersReadyForNextRound)
-                : []
-        } : undefined;
+        const serializedChinchonState = game.currentHand?.chinchonState
+            ? {
+                  ...game.currentHand.chinchonState,
+                  combinations: game.currentHand.chinchonState.combinations ? Object.fromEntries(game.currentHand.chinchonState.combinations) : {},
+                  roundScores: game.currentHand.chinchonState.roundScores ? Object.fromEntries(game.currentHand.chinchonState.roundScores) : {},
+                  playersReadyForNextRound: game.currentHand.chinchonState.playersReadyForNextRound ? Array.from(game.currentHand.chinchonState.playersReadyForNextRound) : [],
+              }
+            : undefined;
 
         return {
             id: game.id,
@@ -304,7 +324,7 @@ export class ChinchonGameService extends BaseGameService {
             players: playersWithActions,
             currentHand: {
                 ...game.currentHand,
-                chinchonState: serializedChinchonState
+                chinchonState: serializedChinchonState,
             },
             teamScores: game.teamScores,
             winner: game.winner,
