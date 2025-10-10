@@ -182,9 +182,16 @@ export class ChinchonGameHandler extends AbstractGameHandler {
                 // Send speech bubble to OTHER players only, not to the player who discarded
                 this.sendSpeechBubbleToOthers(roomId, playerId, "Descartó una carta", "Sistema", 0);
 
-                // After discarding, turn passes to next player - check if it's AI
-                // Don't await to avoid blocking the response
-                this.processAITurnIfNeeded(roomId).catch((err) => console.error("Error in AI turn:", err));
+                // Check if the round was closed by this discard (winning condition)
+                if (result.currentHand?.chinchonState?.isRoundClosed) {
+                    console.log("🎯 Round closed after discard - preparing AI for next round");
+                    // Round ended - prepare AI for next round
+                    setTimeout(() => this.handleAIReadyForNextRound(roomId), 100);
+                } else {
+                    // After discarding, turn passes to next player - check if it's AI
+                    // Don't await to avoid blocking the response
+                    this.processAITurnIfNeeded(roomId).catch((err) => console.error("Error in AI turn:", err));
+                }
             } else {
                 // Send error message if the action failed
                 this.wsService.sendError(ws, "No se puede descartar esta carta en este momento");
