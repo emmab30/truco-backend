@@ -22,6 +22,8 @@ export interface Room {
     password?: string;
     maxScore: number;
     gameType: string;
+    hasAI?: boolean;
+    aiDifficulty?: 'easy' | 'medium' | 'hard';
 }
 
 export interface GameHistory {
@@ -55,6 +57,8 @@ export interface CreateRoomRequest {
     password?: string;
     maxScore?: number;
     gameType?: string;
+    hasAI?: boolean;
+    aiDifficulty?: 'easy' | 'medium' | 'hard';
 }
 
 export interface JoinRoomRequest {

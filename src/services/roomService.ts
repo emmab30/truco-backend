@@ -5,6 +5,7 @@ import { ChinchonGameService } from "@/services/chinchonGameService";
 import { generateId } from "@/shared/utils/common";
 import { getGameFactory, isValidGameType } from "@/game/gameFactory";
 import { GameType } from "@/shared/constants";
+import { ChinchonAIService, AIDifficulty } from "@/game/chinchon/ai/aiService";
 
 /**
  * Room Service
@@ -13,6 +14,7 @@ import { GameType } from "@/shared/constants";
 export class RoomService {
     private rooms: Map<string, Room> = new Map();
     private playerRooms: Map<string, string> = new Map(); // playerId -> roomId
+    private aiService: ChinchonAIService = new ChinchonAIService();
 
     constructor(private trucoGameService: TrucoGameService, private chinchonGameService: ChinchonGameService) {}
 
@@ -40,9 +42,11 @@ export class RoomService {
      * @param password - Password for private rooms
      * @param maxScore - Maximum score for the game
      * @param gameType - Type of game ('truco', 'chinchon', etc.)
+     * @param hasAI - Whether to include AI player
+     * @param aiDifficulty - AI difficulty level
      * @returns Created room
      */
-    createRoom(roomName: string, playerName: string, playerId: string, maxPlayers: number = 2, isPrivate: boolean = false, password?: string, maxScore?: number, gameType: string = GameType.TRUCO): Room {
+    createRoom(roomName: string, playerName: string, playerId: string, maxPlayers: number = 2, isPrivate: boolean = false, password?: string, maxScore?: number, gameType: string = GameType.TRUCO, hasAI: boolean = false, aiDifficulty: AIDifficulty = 'medium'): Room {
         // Validate game type
         if (!isValidGameType(gameType)) {
             throw new Error(`Invalid game type: ${gameType}`);
@@ -60,20 +64,36 @@ export class RoomService {
         const game = gameService.createGame(finalMaxScore, gameType);
 
         // Add the creator as the first player
-        const updatedGame = gameService.addPlayerToGame(game.id, playerId, playerName, Team.TEAM_1);
+        let updatedGame = gameService.addPlayerToGame(game.id, playerId, playerName, Team.TEAM_1);
+
+        // Add AI player if requested and game type is Chinchón
+        if (hasAI && gameType === GameType.CHINCHON) {
+            const aiPlayer = this.aiService.createAIPlayer(updatedGame, aiDifficulty);
+            updatedGame = gameService.addPlayerToGame(updatedGame.id, aiPlayer.id, aiPlayer.name, Team.TEAM_2);
+            console.log(`🤖 AI player added: ${aiPlayer.name} (${aiDifficulty})`);
+        }
+
+        // Si hay IA, iniciar el juego automáticamente
+        if (hasAI && gameType === GameType.CHINCHON && updatedGame.players.length >= 2) {
+            console.log(`🤖 Iniciando juego automáticamente con IA`);
+            updatedGame = gameService.startGame(updatedGame.id);
+            console.log(`🤖 Juego iniciado, cartas repartidas`);
+        }
 
         const room: Room = {
             id: roomId,
             name: roomName,
             game: updatedGame,
             maxPlayers: finalMaxPlayers,
-            isActive: false,
+            isActive: hasAI && gameType === GameType.CHINCHON, // Activar automáticamente si hay IA
             connections: new Map(),
             createdAt: new Date(),
             isPrivate,
             ...(isPrivate && password && { password }),
             maxScore: finalMaxScore,
             gameType,
+            hasAI,
+            aiDifficulty,
         };
 
         this.rooms.set(roomId, room);
@@ -290,6 +310,14 @@ export class RoomService {
         if (room) {
             room.isActive = isActive;
         }
+    }
+
+    /**
+     * Get AI service instance
+     * @returns AI service
+     */
+    getAIService(): ChinchonAIService {
+        return this.aiService;
     }
 
     /**
