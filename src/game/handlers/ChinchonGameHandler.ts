@@ -478,13 +478,16 @@ export class ChinchonGameHandler extends AbstractGameHandler {
             const aiPlayer = freshGame.players.find((p: any) => p.id === currentPlayerId);
             const aiPlayerName = aiPlayer?.name || "IA";
 
+            // Capture discard pile length BEFORE executing action (since it gets mutated)
+            const discardPileLengthBefore = freshGame.currentHand?.chinchonState?.discardPile?.length || 0;
+
             // Execute AI action
             let updatedGame = await this.aiService.executeAIAction(freshGame, currentPlayerId);
 
             console.log(`✅ AI action completed, updating game state...`);
 
             // Determine what action was performed by comparing game states
-            const didDiscard = !updatedGame.currentHand?.chinchonState?.hasDrawnCard && freshGame.currentHand?.chinchonState?.hasDrawnCard;
+            const didDraw = updatedGame.currentHand?.chinchonState?.hasDrawnCard && !freshGame.currentHand?.chinchonState?.hasDrawnCard;
 
             // Update the game state
             room.game = updatedGame;
@@ -502,8 +505,14 @@ export class ChinchonGameHandler extends AbstractGameHandler {
             });
 
             // Send appropriate speech bubble based on action
-            if (didDiscard) {
-                this.sendSpeechBubble(roomId, currentPlayerId, "Descartó una carta", aiPlayerName, 0);
+            if (didDraw) {
+                // Check if drew from discard pile (discard pile decreased from before)
+                const discardPileLengthAfter = updatedGame.currentHand?.chinchonState?.discardPile?.length || 0;
+                const fromDiscardPile = discardPileLengthBefore > discardPileLengthAfter;
+                console.log(`Discard pile before: ${discardPileLengthBefore}, after: ${discardPileLengthAfter}, from discard: ${fromDiscardPile}`);
+                if(fromDiscardPile) {
+                    this.sendSpeechBubble(roomId, currentPlayerId, `Robó una carta del descarte`, aiPlayerName, 0);
+                }
             }
 
             // Refresh room state after broadcast

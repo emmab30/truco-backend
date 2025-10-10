@@ -335,17 +335,6 @@ function checkWinConditionsAfterDiscard(chinchonState: ChinchonState, currentPla
     const combinedCardIds = new Set(combinations.flatMap((c: any) => c.cards.map((card: any) => card.id)));
     const uncombinedCards = currentPlayer.cards.filter((card: any) => !combinedCardIds.has(card.id));
 
-    console.log("🔍 Checking win conditions:", {
-        playerId: currentPlayer.name,
-        cardsCount: currentPlayer.cards.length,
-        combinationsCount: combinations.length,
-        uncombinedCount: uncombinedCards.length,
-        combinations: combinations.map((c: any) => ({
-            type: c.type,
-            count: c.cards.length,
-        })),
-    });
-
     // PRIORITY 1: Check for CHINCHÓN (7-card sequence of same suit)
     const chinchonCombo = combinations.find((c: any) => c.type === "sequence" && c.cards.length === 7);
 

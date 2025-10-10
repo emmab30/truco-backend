@@ -1,6 +1,6 @@
 // ============================================================================
 // CHINCHÓN AI SERVICE
-// Servicio para manejar las acciones de la IA en el juego de Chinchón
+// Service to handle the actions of the AI in the Chinchón game
 // ============================================================================
 
 import { Game, Player } from "@/game/chinchon/types";
@@ -13,7 +13,7 @@ export class ChinchonAIService {
     private aiPlayers: Map<string, ChinchonAI> = new Map();
 
     /**
-     * Crea un jugador IA y lo agrega al juego
+     * Creates an IA player and adds it to the game
      */
     createAIPlayer(game: Game, difficulty: AIDifficulty = "medium"): Player {
         const aiId = `ia_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -39,105 +39,83 @@ export class ChinchonAIService {
     }
 
     /**
-     * Ejecuta la acción de la IA
+     * Executes the action of the IA
      */
     async executeAIAction(game: Game, playerId: string): Promise<Game> {
-        console.log(`🤖 executeAIAction: ${playerId}`);
-
         const ai = this.aiPlayers.get(playerId);
         if (!ai) {
-            console.log(`❌ IA no encontrada para jugador ${playerId}`);
+            console.log(`❌ IA not found for player ${playerId}`);
             return game;
         }
 
-        // Simular tiempo de "pensamiento" de la IA
+        // Simulate thinking time of the IA
         const thinkingTime = this.getThinkingTime(ai);
-        console.log(`🤖 Tiempo de pensamiento: ${thinkingTime}ms`);
         await this.delay(thinkingTime);
 
         const action = ai.makeDecision(game);
         if (!action) {
-            console.log(`❌ IA ${playerId} no pudo decidir acción`);
+            console.log(`❌ IA ${playerId} cannot decide action`);
             return game;
         }
-
-        console.log(`🤖 IA ${playerId} decide: ${action.reason} (${action.type})`);
-        console.log(`🤖 Estado del juego en makeDecision:`, {
-            currentPlayer: game.currentHand?.chinchonState?.currentPlayerId,
-            hasDrawnCard: game.currentHand?.chinchonState?.hasDrawnCard,
-            playerCards: game.players.find((p) => p.id === playerId)?.cards?.length || 0,
-        });
 
         try {
             switch (action.type) {
                 case "draw":
-                    console.log(`🤖 Ejecutando draw action: fromDiscardPile=${action.fromDiscardPile}`);
                     return await this.handleDrawAction(game, playerId, action);
                 case "discard":
-                    console.log(`🤖 Ejecutando discard action: cardId=${action.cardId}`);
                     return await this.handleDiscardAction(game, playerId, action);
                 case "cut":
-                    console.log(`🤖 Ejecutando cut action: cardId=${action.cardId}`);
                     return await this.handleCutAction(game, playerId, action);
                 case "close":
-                    console.log(`🤖 Ejecutando close action`);
                     return await this.handleCloseAction(game, playerId);
                 default:
-                    console.log(`❌ Tipo de acción no reconocido: ${action.type}`);
+                    console.log(`❌ Action type not recognized: ${action.type}`);
                     return game;
             }
         } catch (error) {
-            console.error(`❌ Error ejecutando acción de IA:`, error);
+            console.error(`❌ Error executing IA action:`, error);
             return game;
         }
     }
 
     /**
-     * Maneja la acción de robar carta
+     * Handles the action of drawing a card
      */
     private async handleDrawAction(game: Game, playerId: string, action: AIAction): Promise<Game> {
-        console.log(`🤖 handleDrawAction: playerId=${playerId}, fromDiscardPile=${action.fromDiscardPile}`);
         const result = drawCard(game, playerId, action.fromDiscardPile || false);
-        console.log(`🤖 drawCard result:`, {
-            success: result !== game,
-            playerCards: result.players.find((p) => p.id === playerId)?.cards?.length || 0,
-            hasDrawnCard: result.currentHand?.chinchonState?.hasDrawnCard,
-        });
         return result;
     }
 
     /**
-     * Maneja la acción de descartar carta
+     * Handles the action of discarding a card
      */
     private async handleDiscardAction(game: Game, playerId: string, action: AIAction): Promise<Game> {
         if (!action.cardId) {
-            console.log(`❌ ID de carta no especificado para descarte`);
+            console.log(`❌ Card ID not specified for discard`);
             return game;
         }
         return discardCard(game, playerId, action.cardId);
     }
 
     /**
-     * Maneja la acción de cortar con carta
+     * Handles the action of cutting with a card
      */
     private async handleCutAction(game: Game, playerId: string, action: AIAction): Promise<Game> {
         if (!action.cardId) {
-            console.log(`❌ ID de carta no especificado para corte`);
+            console.log(`❌ Card ID not specified for cut`);
             return game;
         }
 
         const result = cutWithCard(game, playerId, action.cardId);
 
-        // Si el corte falló, verificar si es porque no puede cortar
+        // If the cut failed, check if it's because it can't cut
         if (result === game) {
-            console.log(`🤖 Corte falló, la IA debe descartar en su lugar`);
-            // La IA debe descartar una carta en lugar de cortar
+            // The IA must discard a card instead of cutting
             const player = game.players.find((p) => p.id === playerId);
             if (player && player.cards.length > 0) {
-                // Descarte la primera carta no combinada
+                // Discard the first uncombined card
                 const uncombinedCards = this.getUncombinedCards(player.cards, game.currentHand?.chinchonState?.combinations?.get(playerId) || []);
                 if (uncombinedCards.length > 0) {
-                    console.log(`🤖 Descarte de emergencia: ${uncombinedCards[0].displayValue}`);
                     return discardCard(game, playerId, uncombinedCards[0].id);
                 }
             }
@@ -147,21 +125,15 @@ export class ChinchonAIService {
     }
 
     /**
-     * Maneja la acción de cerrar ronda
+     * Handles the action of closing the round
      */
     private async handleCloseAction(game: Game, playerId: string): Promise<Game> {
-        console.log(`🤖 IA ${playerId} cerrando ronda...`);
         const result = closeRound(game, playerId);
-        console.log(`🤖 Resultado de cerrar ronda:`, {
-            isRoundClosed: result.currentHand?.chinchonState?.isRoundClosed,
-            roundWinner: result.currentHand?.chinchonState?.roundWinner,
-            winner: result.winner,
-        });
         return result;
     }
 
     /**
-     * Obtiene el tiempo de "pensamiento" basado en la dificultad
+     * Gets the thinking time based on the difficulty
      */
     private getThinkingTime(ai: ChinchonAI): number {
         const baseTime = 250; // 1 segundo base
@@ -187,28 +159,28 @@ export class ChinchonAIService {
     }
 
     /**
-     * Verifica si un jugador es IA
+     * Checks if a player is an IA
      */
     isAIPlayer(playerId: string): boolean {
         return this.aiPlayers.has(playerId);
     }
 
     /**
-     * Obtiene la IA de un jugador
+     * Gets the IA of a player
      */
     getAI(playerId: string): ChinchonAI | undefined {
         return this.aiPlayers.get(playerId);
     }
 
     /**
-     * Remueve un jugador IA
+     * Removes an IA player
      */
     removeAIPlayer(playerId: string): void {
         this.aiPlayers.delete(playerId);
     }
 
     /**
-     * Obtiene el mensaje de pensamiento de la IA
+     * Gets the thinking message of the IA
      */
     getAIThinkingMessage(playerId: string): string {
         const ai = this.aiPlayers.get(playerId);
@@ -218,14 +190,14 @@ export class ChinchonAIService {
     }
 
     /**
-     * Limpia todas las IAs
+     * Clears all IAs
      */
     clearAllAI(): void {
         this.aiPlayers.clear();
     }
 
     /**
-     * Obtiene las cartas no combinadas de un jugador
+     * Gets the uncombined cards of a player
      */
     private getUncombinedCards(playerCards: any[], combinations: any[]): any[] {
         const combinedCardIds = new Set();
