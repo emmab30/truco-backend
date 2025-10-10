@@ -484,7 +484,6 @@ export class ChinchonGameHandler extends AbstractGameHandler {
             console.log(`✅ AI action completed, updating game state...`);
 
             // Determine what action was performed by comparing game states
-            const didDraw = updatedGame.currentHand?.chinchonState?.hasDrawnCard && !freshGame.currentHand?.chinchonState?.hasDrawnCard;
             const didDiscard = !updatedGame.currentHand?.chinchonState?.hasDrawnCard && freshGame.currentHand?.chinchonState?.hasDrawnCard;
 
             // Update the game state
