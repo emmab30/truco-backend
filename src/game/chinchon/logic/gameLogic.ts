@@ -437,7 +437,11 @@ export function cutWithCard(game: Game, playerId: string, cardId: string): Game 
     console.log("🎯 Cutting with card:", cardToCut.displayValue, "value:", cardToCut.chinchonValue);
 
     // Calculate scores
-    const cuttingPlayerScore = cardToCut.chinchonValue || 0; // Score is value of cutting card
+    // The score is the sum of uncombined cards EXCLUDING the cutting card
+    const uncombinedCards = player.cards.filter((card: any) => !combinedCardIds.has(card.id));
+    const uncombinedCardsExcludingCuttingCard = uncombinedCards.filter((card: any) => card.id !== cardId);
+    const cuttingPlayerScore = uncombinedCardsExcludingCuttingCard.reduce((sum: number, card: any) => sum + (card.chinchonValue || 0), 0);
+    
     const losingPlayer = game.players.find((p) => p.id !== playerId);
     const losingPlayerScore = calculateLosingPlayerScore(game.currentHand.chinchonState, losingPlayer!);
 
