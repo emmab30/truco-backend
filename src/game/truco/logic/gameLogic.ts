@@ -5,7 +5,7 @@
 
 import { Game, Player, Hand, Round, Card, Team, GamePhase, EnvidoCall, TrucoCall, EnvidoResponse, TrucoResponse } from "@/game/truco/types";
 import { POINTS, TRUCO_GAME_CONFIG } from "@/game/truco/constants";
-import { createCardFromString, createShuffledDeck, getHandWinnerName, countRoundWins, determineRoundWinner, determineHandWinner } from "@/game/truco/utils";
+import { createCardFromString, createShuffledDeck, getHandWinnerName, determineRoundWinner, determineHandWinner } from "@/game/truco/utils";
 import { generateId } from "@/shared/utils/common";
 
 // ============================================================================
@@ -19,15 +19,75 @@ import { generateId } from "@/shared/utils/common";
  */
 function calculateHandPoints(currentHand: Hand): number {
     // Check if truco was accepted in this hand
+    console.log(`🎲 calculateHandPoints: accepted=${currentHand.trucoState?.accepted}, currentCall=${currentHand.trucoState?.currentCall}`);
+    
     if (currentHand.trucoState?.accepted) {
         const trucoCall = currentHand.trucoState.currentCall;
-        if (trucoCall === TrucoCall.TRUCO) return POINTS.TRUCO_ACCEPTED; // 2 puntos
-        else if (trucoCall === TrucoCall.RETRUCO) return POINTS.RETRUCO_ACCEPTED; // 3 puntos
-        else if (trucoCall === TrucoCall.VALE_CUATRO) return POINTS.VALE_CUATRO_ACCEPTED; // 4 puntos
+        if (trucoCall === TrucoCall.TRUCO) {
+            console.log(`🎲 Returning TRUCO points: ${POINTS.TRUCO_ACCEPTED}`);
+            return POINTS.TRUCO_ACCEPTED; // 2 puntos
+        }
+        else if (trucoCall === TrucoCall.RETRUCO) {
+            console.log(`🎲 Returning RETRUCO points: ${POINTS.RETRUCO_ACCEPTED}`);
+            return POINTS.RETRUCO_ACCEPTED; // 3 puntos
+        }
+        else if (trucoCall === TrucoCall.VALE_CUATRO) {
+            console.log(`🎲 Returning VALE_CUATRO points: ${POINTS.VALE_CUATRO_ACCEPTED}`);
+            return POINTS.VALE_CUATRO_ACCEPTED; // 4 puntos
+        }
     }
 
     // No truco was accepted, standard hand win
+    console.log(`🎲 Returning standard hand win: ${POINTS.HAND_WIN}`);
     return POINTS.HAND_WIN; // 1 punto
+}
+
+/**
+ * Check if the hand already has a determined winner
+ * @param rounds - Array of completed rounds
+ * @param players - Array of players
+ * @returns True if hand has a winner, false otherwise
+ */
+function isHandComplete(rounds: Round[], players: Player[]): boolean {
+    if (rounds.length === 0) return false;
+
+    // Contar victorias por equipo
+    let team1Wins = 0;
+    let team2Wins = 0;
+    let pardas = 0;
+
+    rounds.forEach((round) => {
+        if (round.winner) {
+            const winnerPlayer = players.find((p) => p.id === round.winner);
+            if (winnerPlayer) {
+                if (winnerPlayer.team === 0) {
+                    team1Wins++;
+                } else {
+                    team2Wins++;
+                }
+            }
+        } else {
+            pardas++;
+        }
+    });
+
+    // Reglas para determinar si la mano está completa:
+    
+    // 1. Si un equipo ganó 2 rondas, la mano está completa
+    if (team1Wins >= 2 || team2Wins >= 2) return true;
+
+    // 2. Si un equipo ganó 1 ronda y la otra empató (1-0 con parda), la mano está completa
+    if (rounds.length >= 2) {
+        if ((team1Wins === 1 && team2Wins === 0 && pardas === 1) ||
+            (team2Wins === 1 && team1Wins === 0 && pardas === 1)) {
+            return true;
+        }
+    }
+
+    // 3. Si ya se jugaron 3 rondas, la mano está completa
+    if (rounds.length >= 3) return true;
+
+    return false;
 }
 
 /**
@@ -356,11 +416,8 @@ export function playCard(game: Game, playerId: string, cardId: string): Game {
             console.log(`🤝 Round ${game.currentHand!.currentRound + 1} tied`);
         }
 
-        // Check if hand is complete
-        const roundWins = countRoundWins(updatedRounds, updatedPlayers);
-        const hasWinner = Object.values(roundWins).some((wins) => wins >= TRUCO_GAME_CONFIG.roundsToWinHand);
-
-        if (hasWinner || game.currentHand!.currentRound >= TRUCO_GAME_CONFIG.maxRoundsPerHand - 1) {
+        // Check if hand is complete using the new logic
+        if (isHandComplete(updatedRounds, updatedPlayers)) {
             // Hand is complete
             const handWinnerString = determineHandWinner(updatedRounds, updatedPlayers);
             const handWinner = handWinnerString === "team1" ? Team.TEAM_1 : Team.TEAM_2;
@@ -695,18 +752,29 @@ export function callTruco(game: Game, playerId: string, call: TrucoCall): Game {
         responses: new Map(),
     };
 
+    // Check if this is an escalation (truco was already accepted)
+    const isEscalation = currentTrucoState.accepted === true;
+
+    console.log(`🎲 callTruco: ${call}, isEscalation: ${isEscalation}, previous accepted: ${currentTrucoState.accepted}`);
+
+    const newTrucoState: any = {
+        isActive: true,
+        currentCall: call,
+        currentCaller: playerId,
+        responses: new Map(),
+    };
+
+    // Keep accepted flag ONLY if this is an escalation
+    if (isEscalation) {
+        newTrucoState.accepted = true;
+    }
+
     return {
         ...game,
         phase: GamePhase.TRUCO,
         currentHand: {
             ...currentHand,
-            trucoState: {
-                ...currentTrucoState,
-                isActive: true,
-                currentCall: call,
-                currentCaller: playerId,
-                responses: new Map(),
-            },
+            trucoState: newTrucoState,
         },
     };
 }
@@ -758,6 +826,8 @@ export function respondTruco(game: Game, playerId: string, response: TrucoRespon
 
     // If response is "quiero", continue with truco resolution
     if (response === TrucoResponse.QUIERO) {
+        console.log(`🎲 respondTruco QUIERO: currentCall=${currentTrucoState.currentCall}, setting accepted=true`);
+        
         return {
             ...game,
             phase: GamePhase.PLAYING,
@@ -834,10 +904,13 @@ export function goToMazo(game: Game, playerId: string): Game {
     let pointsToAdd = 0;
     const opponentTeam = player.team === Team.TEAM_1 ? Team.TEAM_2 : Team.TEAM_1;
 
-    // Check if there are active calls
+    // Check if there are active calls or accepted truco
     const hasActiveEnvido = currentHand.envidoState?.isActive;
     const hasActiveTruco = currentHand.trucoState?.isActive;
+    const trucoWasAccepted = currentHand.trucoState?.accepted;
     const envidoWasResolved = currentHand.envidoState?.winner !== undefined;
+
+    console.log(`🎲 goToMazo: hasActiveTruco=${hasActiveTruco}, trucoWasAccepted=${trucoWasAccepted}, trucoCall=${currentHand.trucoState?.currentCall}`);
 
     if (hasActiveEnvido || hasActiveTruco) {
         // If there are active calls, it's like an abandonment
@@ -850,15 +923,31 @@ export function goToMazo(game: Game, playerId: string): Game {
             else if (trucoCall === TrucoCall.RETRUCO) pointsToAdd += POINTS.RETRUCO_ACCEPTED;
             else if (trucoCall === TrucoCall.VALE_CUATRO) pointsToAdd += POINTS.VALE_CUATRO_ACCEPTED;
         }
+    } else if (trucoWasAccepted) {
+        // Truco was accepted and player goes to mazo - award points based on truco level
+        const trucoCall = currentHand.trucoState.currentCall;
+        if (trucoCall === TrucoCall.TRUCO) {
+            pointsToAdd = POINTS.TRUCO_ACCEPTED;
+            console.log(`🎲 goToMazo: Truco was accepted, awarding ${POINTS.TRUCO_ACCEPTED} points`);
+        } else if (trucoCall === TrucoCall.RETRUCO) {
+            pointsToAdd = POINTS.RETRUCO_ACCEPTED;
+            console.log(`🎲 goToMazo: Retruco was accepted, awarding ${POINTS.RETRUCO_ACCEPTED} points`);
+        } else if (trucoCall === TrucoCall.VALE_CUATRO) {
+            pointsToAdd = POINTS.VALE_CUATRO_ACCEPTED;
+            console.log(`🎲 goToMazo: Vale Cuatro was accepted, awarding ${POINTS.VALE_CUATRO_ACCEPTED} points`);
+        }
     } else if (envidoWasResolved) {
         // Envido was already resolved - standard mazo rules but only 1 point
         pointsToAdd = POINTS.MAZO_OTHER_ROUNDS; // 1 point
+        console.log(`🎲 goToMazo: Envido was resolved, awarding ${POINTS.MAZO_OTHER_ROUNDS} point`);
     } else {
         // No active calls - standard mazo rules
         if (currentRound.number === 1) {
             pointsToAdd = POINTS.MAZO_FIRST_ROUND;
+            console.log(`🎲 goToMazo: First round mazo, awarding ${POINTS.MAZO_FIRST_ROUND} points`);
         } else {
             pointsToAdd = POINTS.MAZO_OTHER_ROUNDS;
+            console.log(`🎲 goToMazo: Other round mazo, awarding ${POINTS.MAZO_OTHER_ROUNDS} point`);
         }
     }
 

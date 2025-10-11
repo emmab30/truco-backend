@@ -161,29 +161,30 @@ export function determineHandWinner(rounds: Round[], players: Player[]): TeamStr
         }
     });
 
-    // Determine winner with Truco rules
+    // Reglas del Truco para determinar ganador:
+    // 1. Si un equipo gana 2 rondas, gana la mano
     if (teamWins.team1 >= 2) return "team1";
     if (teamWins.team2 >= 2) return "team2";
 
-    // Special cases with pardas
-    if (teamWins.team1 === 1 && teamWins.team2 === 1) {
-        // 1-1-1: parda in third round
-        if (teamWins.pardas === 1 && rounds.length === 3) {
-            // Check who won first round
-            const firstRoundWinner = rounds[0]?.winner;
-            if (firstRoundWinner) {
-                const firstWinnerPlayer = players.find((p) => p.id === firstRoundWinner);
-                return firstWinnerPlayer?.team === 0 ? "team1" : "team2";
-            }
-        }
-        return "team1"; // Default to team1 in case of complex tie
-    }
-
-    // If only pardas or 1 win + pardas
+    // 2. Si un equipo gana 1 ronda y la otra es parda, ese equipo gana
+    //    (Ejemplo: gana primera, empata segunda -> gana la mano)
     if (teamWins.team1 === 1 && teamWins.team2 === 0) return "team1";
     if (teamWins.team2 === 1 && teamWins.team1 === 0) return "team2";
 
-    // Default (shouldn't happen in normal game flow)
+    // 3. Si primera es parda, el ganador de la segunda gana la mano
+    //    Si primera y segunda son pardas, el ganador de la tercera gana
+    //    Este caso se maneja arriba (team1 === 1 || team2 === 1)
+
+    // 4. Si hay empate 1-1 y la tercera es parda, gana quien ganó la primera
+    if (teamWins.team1 === 1 && teamWins.team2 === 1 && teamWins.pardas === 1) {
+        const firstRoundWinner = rounds[0]?.winner;
+        if (firstRoundWinner) {
+            const firstWinnerPlayer = players.find((p) => p.id === firstRoundWinner);
+            return firstWinnerPlayer?.team === 0 ? "team1" : "team2";
+        }
+    }
+
+    // Default: si todo son pardas, gana el mano (team1)
     return "team1";
 }
 

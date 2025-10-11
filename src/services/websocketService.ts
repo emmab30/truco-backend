@@ -285,15 +285,27 @@ export class WebSocketService {
             // Get the appropriate game service based on game type
             const gameService = this.getGameService(room.gameType);
 
-            // If AI mode is enabled for Chinchon, add AI player and start game automatically
-            if (hasAI && gameType === GameType.CHINCHON) {
+            // If AI mode is enabled, add AI player and start game automatically
+            if (hasAI && (gameType === GameType.CHINCHON || gameType === GameType.TRUCO)) {
                 console.log(`🤖 Creating AI player for room ${room.id} with difficulty: ${aiDifficulty}`);
 
                 // Add AI player to the game
-                (gameService as any).addAIPlayerToGame(room.game.id, aiDifficulty);
+                // For Truco, difficulty is always "hard", for Chinchon we pass the selected difficulty
+                if (gameType === GameType.TRUCO) {
+                    (gameService as any).addAIPlayerToGame(room.game.id);
+                } else {
+                    (gameService as any).addAIPlayerToGame(room.game.id, aiDifficulty);
+                }
 
                 // Start the game immediately
-                const startedGame = gameService.startGame(room.game.id);
+                let startedGame = gameService.startGame(room.game.id);
+                
+                // For Truco, we also need to deal the first hand (Chinchón does this automatically in startGame)
+                if (gameType === GameType.TRUCO) {
+                    startedGame = gameService.dealNewHand(startedGame.id);
+                    console.log(`🎴 Dealt first hand for Truco game ${room.id}`);
+                }
+                
                 this.roomService.updateRoomGame(room.id, startedGame);
                 this.roomService.setRoomActive(room.id, true);
                 room.game = startedGame;
@@ -316,15 +328,23 @@ export class WebSocketService {
             });
 
             // If game was started with AI, trigger AI's first move if needed
-            if (hasAI && gameType === GameType.CHINCHON && room.isActive) {
+            if (hasAI && (gameType === GameType.CHINCHON || gameType === GameType.TRUCO) && room.isActive) {
                 const gameHandler = this.gameHandlerRegistry.getHandler(gameType);
                 if (gameHandler) {
                     // Trigger AI turn check after a short delay to ensure client receives game state first
                     setTimeout(() => {
                         const currentRoom = this.roomService.getRoom(room.id);
-                        if (currentRoom?.game?.currentHand?.chinchonState?.currentPlayerId?.startsWith("ia_")) {
-                            console.log(`🤖 Triggering initial AI turn for room ${room.id}`);
-                            (gameHandler as any).processAITurnIfNeeded?.(room.id);
+                        if (currentRoom?.game?.currentHand) {
+                            // For Chinchon, check chinchonState
+                            if (gameType === GameType.CHINCHON && currentRoom.game.currentHand.chinchonState?.currentPlayerId?.startsWith("ia_")) {
+                                console.log(`🤖 Triggering initial AI turn for Chinchon room ${room.id}`);
+                                (gameHandler as any).processAITurnIfNeeded?.(room.id);
+                            }
+                            // For Truco, check currentPlayerId
+                            else if (gameType === GameType.TRUCO && currentRoom.game.currentHand.currentPlayerId?.startsWith("ia_")) {
+                                console.log(`🤖 Triggering initial AI turn for Truco room ${room.id}`);
+                                (gameHandler as any).processAITurnIfNeeded?.(room.id);
+                            }
                         }
                     }, 500);
                 }

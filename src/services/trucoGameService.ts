@@ -20,15 +20,24 @@ import {
 } from '@/game/truco';
 import { GameType } from '@/shared/constants';
 import { BaseGameService } from './baseGameService';
+import { TrucoAIService } from '@/game/truco/ai/aiService';
 
 /**
  * Truco Game Service
  * Handles all Truco-specific game operations
  */
 export class TrucoGameService extends BaseGameService {
+  private aiService: TrucoAIService | null = null;
 
   getGameType(): string {
     return GameType.TRUCO;
+  }
+
+  /**
+   * Set AI service instance (injected from handler)
+   */
+  setAIService(aiService: TrucoAIService): void {
+    this.aiService = aiService;
   }
 
   /**
@@ -47,6 +56,32 @@ export class TrucoGameService extends BaseGameService {
 
     const updatedGame = addPlayer(game, playerId, playerName, team);
     this.updateGame(updatedGame);
+    return updatedGame;
+  }
+
+  /**
+   * Add an AI player to a game
+   * This is a convenience method that creates an AI player and adds it to the game
+   * The AI always plays at hard difficulty level
+   */
+  addAIPlayerToGame(gameId: string): Game {
+    const game = this.getGame(gameId);
+    if (!game) {
+      throw new Error("Game not found");
+    }
+
+    if (!this.aiService) {
+      throw new Error("AI Service not initialized. Call setAIService first.");
+    }
+
+    // Create AI player using the AI service (always hard difficulty)
+    const aiPlayer = this.aiService.createAIPlayer(game);
+
+    // Add AI player to game
+    const updatedGame = addPlayer(game, aiPlayer.id, aiPlayer.name, aiPlayer.team);
+    this.updateGame(updatedGame);
+
+    console.log(`🤖 Added AI player ${aiPlayer.name} (${aiPlayer.id}) to game ${gameId}`);
     return updatedGame;
   }
 

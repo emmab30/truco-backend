@@ -50,10 +50,10 @@ export function getAvailableActions(game: Game, playerId: string): Action[] {
 
         // Check if player hasn't played a card yet
         if (!currentPlayer.hasPlayedCard) {
-            // Envido calls (only in first round, before first card, and before truco)
+            // Envido calls (only in first round, before first card, and before truco was called/accepted)
             const isFirstRound = currentRound.number === 1;
             const envidoDisabled = envidoState?.winner !== undefined; // Disabled if envido was resolved
-            const trucoWasCalled = trucoState?.isActive || trucoState?.accepted; // Disabled if truco was called
+            const trucoWasCalled = trucoState?.isActive || trucoState?.accepted; // Disabled if truco was called OR accepted
 
             if (isFirstRound && !trucoWasCalled && !envidoDisabled) {
                 if (!envidoState?.isActive) {
