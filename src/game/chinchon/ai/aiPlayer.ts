@@ -4,6 +4,7 @@
 // ============================================================================
 
 import { Game, Card, Combination, ChinchonState, ActionType } from "@/game/chinchon/types";
+import { findCombinations } from "@/game/chinchon/logic/gameLogic";
 
 export type AIDifficulty = "easy" | "medium" | "hard";
 
@@ -684,54 +685,10 @@ export class ChinchonAI {
     }
 
     /**
-     * Encuentra combinaciones en un conjunto de cartas (versión simplificada)
+     * Encuentra combinaciones en un conjunto de cartas
+     * Usa el algoritmo optimizado del módulo de lógica
      */
     private findCombinations(cards: Card[]): Combination[] {
-        const combinations: Combination[] = [];
-
-        // Buscar secuencias del mismo palo
-        const suits = ["bastos", "copas", "espadas", "oros"] as const;
-        for (const suit of suits) {
-            const suitCards = cards.filter((c) => c.suit === suit).sort((a, b) => a.value - b.value);
-            if (suitCards.length >= 3) {
-                // Buscar secuencias de 3+ cartas
-                for (let i = 0; i <= suitCards.length - 3; i++) {
-                    const sequence = suitCards.slice(i, i + 3);
-                    if (sequence.every((card, idx) => idx === 0 || card.value === sequence[idx - 1]!.value + 1)) {
-                        combinations.push({
-                            id: `seq_${sequence.map((c) => c.id).join("_")}`,
-                            type: "sequence",
-                            cards: sequence,
-                            points: sequence.reduce((sum, card) => sum + (card.chinchonValue || 0), 0),
-                            isValid: true,
-                        });
-                    }
-                }
-            }
-        }
-
-        // Buscar grupos del mismo valor
-        const valueGroups = new Map<number, Card[]>();
-        cards.forEach((card) => {
-            const value = card.value;
-            if (!valueGroups.has(value)) {
-                valueGroups.set(value, []);
-            }
-            valueGroups.get(value)!.push(card);
-        });
-
-        valueGroups.forEach((groupCards, _value) => {
-            if (groupCards.length >= 3) {
-                combinations.push({
-                    id: `group_${groupCards.map((c) => c.id).join("_")}`,
-                    type: "group",
-                    cards: groupCards,
-                    points: groupCards.reduce((sum, card) => sum + (card.chinchonValue || 0), 0),
-                    isValid: true,
-                });
-            }
-        });
-
-        return combinations;
+        return findCombinations(cards);
     }
 }

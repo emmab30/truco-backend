@@ -544,73 +544,215 @@ export function closeRound(game: Game, playerId: string): Game {
 // COMBINATION LOGIC
 // ============================================================================
 
+/**
+ * Finds the best set of combinations that minimizes points in uncombined cards.
+ * This algorithm:
+ * 1. Generates ALL possible valid combinations (sequences and groups)
+ * 2. Uses backtracking to find the best non-overlapping set of combinations
+ * 3. Returns the set that leaves the fewest points in uncombined cards
+ */
 export function findCombinations(cards: Card[]): Combination[] {
-    const combinations: Combination[] = [];
-    const usedCards = new Set<string>();
+    // Step 1: Generate all possible combinations
+    const allPossibleCombinations = generateAllPossibleCombinations(cards);
+    
+    if (allPossibleCombinations.length === 0) {
+        return [];
+    }
 
-    // Find sequences (3+ consecutive cards of same suit)
-    const suitGroups: { [suit: string]: any[] } = {};
+    // Step 2: Find the best non-overlapping set
+    const bestSet = findBestCombinationSet(cards, allPossibleCombinations);
+    
+    return bestSet;
+}
+
+/**
+ * Generates all possible valid combinations (sequences and groups) without restrictions
+ */
+function generateAllPossibleCombinations(cards: Card[]): Combination[] {
+    const allCombinations: Combination[] = [];
+
+    // Find all possible sequences (3+ consecutive cards of same suit)
+    const sequences = findAllSequences(cards);
+    allCombinations.push(...sequences);
+
+    // Find all possible groups (3+ cards of same value)
+    const groups = findAllGroups(cards);
+    allCombinations.push(...groups);
+
+    return allCombinations;
+}
+
+/**
+ * Finds all possible sequences in the cards
+ */
+function findAllSequences(cards: Card[]): Combination[] {
+    const sequences: Combination[] = [];
+    const suitGroups: { [suit: string]: Card[] } = {};
+
+    // Group by suit
     cards.forEach((card) => {
         if (!suitGroups[card.suit]) {
             suitGroups[card.suit] = [];
         }
-        suitGroups[card.suit]?.push(card);
+        suitGroups[card.suit]!.push(card);
     });
 
+    // For each suit, find all possible sequences
     Object.values(suitGroups).forEach((suitCards) => {
+        if (!suitCards) return;
+        
         const sortedCards = suitCards.sort((a, b) => a.value - b.value);
 
-        for (let i = 0; i < sortedCards.length - 2; i++) {
-            const sequence: Card[] = [sortedCards[i]];
-            let j = i + 1;
+        // Find all sequences of length 3 or more
+        for (let start = 0; start < sortedCards.length; start++) {
+            for (let end = start + 2; end < sortedCards.length; end++) {
+                const potentialSequence = sortedCards.slice(start, end + 1);
+                
+                // Check if it's a valid sequence (consecutive values)
+                let isValid = true;
+                for (let i = 1; i < potentialSequence.length; i++) {
+                    const curr = potentialSequence[i];
+                    const prev = potentialSequence[i - 1];
+                    if (!curr || !prev || curr.value !== prev.value + 1) {
+                        isValid = false;
+                        break;
+                    }
+                }
 
-            while (j < sortedCards.length && sortedCards[j] && sortedCards[j - 1] && sortedCards[j].value === sortedCards[j - 1].value + 1) {
-                sequence.push(sortedCards[j]);
-                j++;
-            }
-
-            if (sequence.length >= 3) {
-                const canUse = sequence.every((card) => !usedCards.has(card.id));
-                if (canUse) {
-                    sequence.forEach((card) => usedCards.add(card.id));
-                    combinations.push({
-                        id: generateStableCombinationId(sequence),
+                if (isValid && potentialSequence.length >= 3) {
+                    sequences.push({
+                        id: generateStableCombinationId(potentialSequence),
                         type: "sequence",
-                        cards: sequence,
+                        cards: potentialSequence,
                         isValid: true,
-                        points: sequence.reduce((sum, card) => sum + (card.chinchonValue || 0), 0),
+                        points: potentialSequence.reduce((sum, card) => sum + (card.chinchonValue || 0), 0),
                     });
                 }
             }
         }
     });
 
-    // Find groups (3+ cards of same value)
-    const valueGroups: { [value: string]: any[] } = {};
+    return sequences;
+}
+
+/**
+ * Finds all possible groups in the cards
+ */
+function findAllGroups(cards: Card[]): Combination[] {
+    const groups: Combination[] = [];
+    const valueGroups: { [value: string]: Card[] } = {};
+
+    // Group by value
     cards.forEach((card) => {
-        if (!valueGroups[card.value.toString()]) {
-            valueGroups[card.value.toString()] = [];
+        const key = card.value.toString();
+        if (!valueGroups[key]) {
+            valueGroups[key] = [];
         }
-        valueGroups[card.value.toString()]?.push(card);
+        valueGroups[key].push(card);
     });
 
+    // For each value, find all possible groups of 3 or 4 cards
     Object.values(valueGroups).forEach((valueCards) => {
-        if (valueCards && valueCards.length >= 3) {
-            const canUse = valueCards.every((card) => !usedCards.has(card.id));
-            if (canUse) {
-                valueCards.forEach((card) => usedCards.add(card.id));
-                combinations.push({
-                    id: generateStableCombinationId(valueCards),
-                    type: "group",
-                    cards: valueCards,
-                    isValid: true,
-                    points: valueCards.reduce((sum, card) => sum + (card.chinchonValue || 0), 0),
+        if (valueCards.length >= 3) {
+            // Generate all combinations of 3, 4, etc. cards
+            for (let size = 3; size <= valueCards.length; size++) {
+                const combinations = getCombinationsOfSize(valueCards, size);
+                combinations.forEach((combo) => {
+                    groups.push({
+                        id: generateStableCombinationId(combo),
+                        type: "group",
+                        cards: combo,
+                        isValid: true,
+                        points: combo.reduce((sum, card) => sum + (card.chinchonValue || 0), 0),
+                    });
                 });
             }
         }
     });
 
-    return combinations;
+    return groups;
+}
+
+/**
+ * Gets all combinations of a specific size from an array
+ */
+function getCombinationsOfSize(arr: Card[], size: number): Card[][] {
+    if (size === arr.length) {
+        return [arr];
+    }
+    if (size === 1) {
+        return arr.map((item) => [item]);
+    }
+    
+    const result: Card[][] = [];
+    
+    function backtrack(start: number, current: Card[]) {
+        if (current.length === size) {
+            result.push([...current]);
+            return;
+        }
+        
+        for (let i = start; i < arr.length; i++) {
+            const card = arr[i];
+            if (card) {
+                current.push(card);
+                backtrack(i + 1, current);
+                current.pop();
+            }
+        }
+    }
+    
+    backtrack(0, []);
+    return result;
+}
+
+/**
+ * Finds the best non-overlapping set of combinations that minimizes uncombined points
+ */
+function findBestCombinationSet(cards: Card[], allCombinations: Combination[]): Combination[] {
+    let bestSet: Combination[] = [];
+    let minUnusedPoints = Infinity;
+
+    // Try all possible subsets of combinations
+    function backtrack(index: number, currentSet: Combination[], usedCardIds: Set<string>) {
+        // Calculate points for unused cards
+        const unusedCards = cards.filter((card) => !usedCardIds.has(card.id));
+        const unusedPoints = unusedCards.reduce((sum, card) => sum + (card.chinchonValue || 0), 0);
+
+        // Update best set if this is better
+        if (unusedPoints < minUnusedPoints || 
+            (unusedPoints === minUnusedPoints && currentSet.length > bestSet.length)) {
+            minUnusedPoints = unusedPoints;
+            bestSet = [...currentSet];
+        }
+
+        // If all cards are used, we found the best possible solution
+        if (unusedPoints === 0) {
+            return;
+        }
+
+        // Try adding more combinations
+        for (let i = index; i < allCombinations.length; i++) {
+            const combo = allCombinations[i];
+            if (!combo) continue;
+            
+            // Check if any card in this combination is already used
+            const hasOverlap = combo.cards.some((card) => usedCardIds.has(card.id));
+            
+            if (!hasOverlap) {
+                // Add this combination to current set
+                const newUsedCardIds = new Set(usedCardIds);
+                combo.cards.forEach((card) => newUsedCardIds.add(card.id));
+                
+                currentSet.push(combo);
+                backtrack(i + 1, currentSet, newUsedCardIds);
+                currentSet.pop();
+            }
+        }
+    }
+
+    backtrack(0, [], new Set());
+    return bestSet;
 }
 
 // ============================================================================

@@ -12,7 +12,8 @@
     "type-check": "tsc --noEmit",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
-    "setup": "npm install && npm run build"
+    "setup": "npm install && npm run build",
+    "test:combinations": "ts-node -r tsconfig-paths/register src/game/chinchon/__tests__/test-combinations.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",
