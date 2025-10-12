@@ -637,6 +637,7 @@ function findAllSequences(cards: Card[]): Combination[] {
 
 /**
  * Finds all possible groups in the cards
+ * Groups (tríos/cuartetos) are limited to 3 or 4 cards maximum
  */
 function findAllGroups(cards: Card[]): Combination[] {
     const groups: Combination[] = [];
@@ -651,11 +652,12 @@ function findAllGroups(cards: Card[]): Combination[] {
         valueGroups[key].push(card);
     });
 
-    // For each value, find all possible groups of 3 or 4 cards
+    // For each value, find all possible groups of 3 or 4 cards only
     Object.values(valueGroups).forEach((valueCards) => {
         if (valueCards.length >= 3) {
-            // Generate all combinations of 3, 4, etc. cards
-            for (let size = 3; size <= valueCards.length; size++) {
+            // Generate combinations of 3 or 4 cards only (maximum for groups)
+            const maxSize = Math.min(valueCards.length, 4);
+            for (let size = 3; size <= maxSize; size++) {
                 const combinations = getCombinationsOfSize(valueCards, size);
                 combinations.forEach((combo) => {
                     groups.push({
@@ -708,8 +710,22 @@ function getCombinationsOfSize(arr: Card[], size: number): Card[][] {
 
 /**
  * Finds the best non-overlapping set of combinations that minimizes uncombined points
+ * SPECIAL RULE: Only prioritizes chinchón (7-card escalera) which wins automatically
+ * All other combinations follow standard optimization (minimize unused points)
  */
 function findBestCombinationSet(cards: Card[], allCombinations: Combination[]): Combination[] {
+    // PRIORITY 1: Check for 7-card chinchón (winning hand)
+    const chinchon = allCombinations.find(
+        (combo) => combo.type === "sequence" && combo.cards.length === 7
+    );
+    
+    if (chinchon) {
+        // 7-card chinchón always wins, return it immediately
+        return [chinchon];
+    }
+
+    // PRIORITY 2: Use standard algorithm to minimize uncombined points
+    // No special prioritization for 6-card or smaller sequences
     let bestSet: Combination[] = [];
     let minUnusedPoints = Infinity;
 

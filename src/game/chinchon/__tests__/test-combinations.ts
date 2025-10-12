@@ -226,6 +226,8 @@ function calculateUnusedPoints(cards: Card[], combinations: any[]): number {
 /**
  * Imprime resultado detallado de un test
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// @ts-ignore
 function printDetailedTest(testName: string, cards: Card[], expectedCombos?: string[]): void {
     console.log(`\n${'='.repeat(70)}`);
     console.log(`🧪 TEST: ${testName}`);
@@ -284,7 +286,7 @@ function printDetailedTest(testName: string, cards: Card[], expectedCombos?: str
  * Tests "tricky" que prueban el algoritmo inteligente
  */
 function runTrickyTests(): void {
-    console.log('\n\n');
+    /* console.log('\n\n');
     console.log('🎯'.repeat(35));
     console.log('🔥 TESTS TRICKY - VALIDACIÓN DE ALGORITMO INTELIGENTE 🔥');
     console.log('🎯'.repeat(35));
@@ -517,7 +519,31 @@ function runTrickyTests(): void {
     console.log('='.repeat(70));
     console.log('✅ TESTS COMPLETADOS - Revisa los resultados arriba');
     console.log('='.repeat(70));
-    console.log('\n');
+    console.log('\n'); */
+
+    let combinations = findCombinations([
+        createCard(Suit.OROS, 3),
+        createCard(Suit.OROS, 4),
+        createCard(Suit.OROS, 5),
+        createCard(Suit.OROS, 6),
+        createCard(Suit.OROS, 7),
+        createCard(Suit.OROS, 8),
+        createCard(Suit.OROS, 9),
+    ]);
+
+    console.log(`Combo 1`, combinations);
+
+    combinations = findCombinations([
+        createCard(Suit.OROS, 3),
+        createCard(Suit.OROS, 4),
+        createCard(Suit.OROS, 5),
+        createCard(Suit.OROS, 6),
+        createCard(Suit.OROS, 7),
+        createCard(Suit.OROS, 8),
+        createCard(Suit.ESPADAS, 9),
+    ]);
+
+    console.log(`Combo 2`, combinations);
 }
 
 /**
