@@ -683,9 +683,10 @@ export function respondEnvido(game: Game, playerId: string, response: EnvidoResp
         
         // Calculate points based on counts
         if (faltaEnvidoCount > 0) {
-            // For falta envido, calculate points needed to reach 30
+            // For falta envido, calculate points needed to reach maxScore
             const loser = callerWins ? responder : caller;
-            pointsToAdd = Math.min(30 - loser.points, 30);
+            const maxScore = game.gameConfig.maxScore;
+            pointsToAdd = Math.min(maxScore - loser.points, maxScore);
         } else {
             // Sum all envido levels played
             pointsToAdd = (envidoCount * POINTS.ENVIDO_ACCEPTED) + (realEnvidoCount * POINTS.REAL_ENVIDO_ACCEPTED);

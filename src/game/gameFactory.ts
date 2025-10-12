@@ -111,6 +111,7 @@ export function createGameByType(gameType: GameType, maxScore?: number): Game {
     }
     
     const finalMaxScore = maxScore || factory.getDefaultMaxScore();
+
     return factory.createGame(finalMaxScore);
 }
 

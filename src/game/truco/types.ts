@@ -228,6 +228,7 @@ export interface GameResponse {
     currentHand: Hand | null;
     teamScores: [number, number];
     winner: Team | null;
+    maxScore: number;
 }
 
 // ============================================================================
