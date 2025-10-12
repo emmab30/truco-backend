@@ -519,6 +519,18 @@ export function callEnvido(game: Game, playerId: string, call: EnvidoCall): Game
         playedLevels: [],
     };
 
+    // If there's an active truco, cancel it (envido has priority in first round)
+    let updatedTrucoState = currentHand.trucoState;
+    if (currentHand.trucoState?.isActive) {
+        console.log("🎲 Envido called while Truco was active - cancelling Truco");
+        updatedTrucoState = {
+            isActive: false,
+            currentCall: null,
+            currentCaller: null,
+            responses: new Map(),
+        };
+    }
+
     // If there's already an active envido, this is a raise
     if (currentEnvidoState.isActive) {
         // Update the current call to the higher one
@@ -532,6 +544,7 @@ export function callEnvido(game: Game, playerId: string, call: EnvidoCall): Game
             phase: GamePhase.ENVIDO,
             currentHand: {
                 ...currentHand,
+                trucoState: updatedTrucoState,
                 envidoState: {
                     ...currentEnvidoState,
                     currentCall: newCall,
@@ -550,6 +563,7 @@ export function callEnvido(game: Game, playerId: string, call: EnvidoCall): Game
         phase: GamePhase.ENVIDO,
         currentHand: {
             ...currentHand,
+            trucoState: updatedTrucoState,
             envidoState: {
                 ...currentEnvidoState,
                 isActive: true,

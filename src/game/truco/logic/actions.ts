@@ -261,6 +261,30 @@ export function getAvailableActions(game: Game, playerId: string): Action[] {
     } else if (game.phase === GamePhase.TRUCO) {
         // Only the player who didn't call truco can respond
         if (trucoState?.currentCaller !== playerId) {
+            // In first round, can call envido instead of responding to truco
+            const isFirstRound = currentRound.number === 1;
+            const envidoWasResolved = envidoState?.winner !== undefined;
+            
+            if (isFirstRound && !envidoWasResolved) {
+                // Can call envido to cancel truco
+                actions.push({
+                    type: ActionType.ENVIDO,
+                    label: "Envido",
+                    priority: ACTION_PRIORITIES[ActionType.ENVIDO],
+                });
+                actions.push({
+                    type: ActionType.REAL_ENVIDO,
+                    label: "Real Envido",
+                    priority: ACTION_PRIORITIES[ActionType.REAL_ENVIDO],
+                });
+                actions.push({
+                    type: ActionType.FALTA_ENVIDO,
+                    label: "Falta Envido",
+                    priority: ACTION_PRIORITIES[ActionType.FALTA_ENVIDO],
+                });
+            }
+            
+            // Standard truco responses
             actions.push({
                 type: ActionType.QUIERO,
                 label: "Quiero",

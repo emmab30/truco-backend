@@ -57,6 +57,26 @@ export class TrucoAI {
 
         // Verificar si hay que responder a truco
         if (game.phase === "truco" && currentHand.trucoState?.currentCaller !== this.playerId) {
+            // En primera ronda, considerar cantar envido en lugar de responder al truco
+            const isFirstRound = currentRound.number === 1;
+            const envidoWasResolved = currentHand.envidoState?.winner !== undefined;
+            
+            if (isFirstRound && !envidoWasResolved) {
+                const envidoPoints = this.calculateEnvidoPoints(player.cards);
+                const shouldCallEnvido = this.shouldCallEnvidoOverTruco(envidoPoints, player);
+                
+                if (shouldCallEnvido) {
+                    const envidoCall = this.chooseEnvidoCall(envidoPoints, player, game.players.find(p => p.id !== this.playerId)!);
+                    console.log(`🤖 IA ${this.playerId} - 🎯 CANTAR ENVIDO EN VEZ DE RESPONDER TRUCO: ${envidoCall} (tengo ${envidoPoints})`);
+                    return {
+                        type: "envido",
+                        envidoCall,
+                        priority: 2,
+                        reason: `Envido tiene prioridad: ${envidoCall} con ${envidoPoints} puntos`,
+                    };
+                }
+            }
+            
             return this.decideTrucoResponse(game, player);
         }
 
@@ -407,6 +427,23 @@ export class TrucoAI {
         if (myPoints >= 24) return Math.random() < 0.5;
 
         // Menos de 24: no canto
+        return false;
+    }
+
+    /**
+     * Decide si debe cantar envido cuando el oponente cantó truco
+     */
+    private shouldCallEnvidoOverTruco(myPoints: number, _player: Player): boolean {
+        // Si tengo muy buenos puntos de envido, vale la pena cancelar el truco
+        if (myPoints >= 31) return true;
+
+        // Si tengo buenos puntos, 70% de probabilidad
+        if (myPoints >= 28) return Math.random() < 0.7;
+
+        // Si tengo puntos decentes, 40% de probabilidad
+        if (myPoints >= 25) return Math.random() < 0.4;
+
+        // Menos de 25: no canto envido, respondo al truco normalmente
         return false;
     }
 
