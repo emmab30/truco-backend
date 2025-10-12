@@ -383,7 +383,12 @@ export class ChinchonAI {
     }
 
     /**
-     * Verifica condiciones de corte
+     * Verifica condiciones de corte con estrategia inteligente
+     * La IA NO siempre corta - evalúa varios factores estratégicos:
+     * 1. Valor de la carta de corte (mejor si es 1-2 puntos)
+     * 2. Puntos totales sin combinar (mejor si son pocos)
+     * 3. Calidad de las combinaciones actuales
+     * 4. Probabilidad de mejorar la mano
      */
     private checkCutConditions(combinations: Combination[], uncombinedCards: Card[]): AIAction | null {
         const totalCombinedCards = combinations.reduce((sum, c) => sum + c.cards.length, 0);
@@ -395,19 +400,173 @@ export class ChinchonAI {
             const cuttingCard = uncombinedCards.find((card) => (card.chinchonValue || 0) < 5);
 
             if (cuttingCard) {
-                console.log(`🤖 IA ${this.playerId} - Puede cortar: 6 cartas combinadas, carta para cortar: ${cuttingCard.displayValue}`);
-                return {
-                    type: "cut",
-                    cardId: cuttingCard.id,
-                    priority: 8,
-                    reason: `Cortar con ${cuttingCard.displayValue} (${cuttingCard.chinchonValue} puntos)`,
-                };
+                // ESTRATEGIA INTELIGENTE: No siempre cortar, evaluar si vale la pena
+                const shouldCut = this.shouldCutStrategically(cuttingCard, uncombinedCards, combinations);
+                
+                if (shouldCut.decision) {
+                    console.log(`🤖 IA ${this.playerId} - ✅ DECIDIÓ CORTAR: ${shouldCut.reason}`);
+                    return {
+                        type: "cut",
+                        cardId: cuttingCard.id,
+                        priority: 8,
+                        reason: `Cortar con ${cuttingCard.displayValue} (${cuttingCard.chinchonValue} puntos)`,
+                    };
+                } else {
+                    console.log(`🤖 IA ${this.playerId} - ❌ DECIDIÓ NO CORTAR: ${shouldCut.reason}`);
+                    return null; // No cortar, seguir jugando para mejorar
+                }
             }
         } else if (totalCombinedCards > 6) {
             console.log(`🤖 IA ${this.playerId} - No puede cortar: tiene ${totalCombinedCards} cartas combinadas (necesita exactamente 6)`);
         }
 
         return null;
+    }
+
+    /**
+     * Evalúa estratégicamente si debería cortar o seguir jugando
+     * Retorna: { decision: boolean, reason: string }
+     */
+    private shouldCutStrategically(cuttingCard: Card, uncombinedCards: Card[], combinations: Combination[]): { decision: boolean; reason: string } {
+        const cuttingCardValue = cuttingCard.chinchonValue || 0;
+        const totalUncombinedPoints = uncombinedCards.reduce((sum, card) => sum + (card.chinchonValue || 0), 0);
+        
+        // Calcular puntos SIN la carta de corte (que no se cuenta)
+        const pointsExcludingCuttingCard = totalUncombinedPoints - cuttingCardValue;
+
+        console.log(`🤖 IA ${this.playerId} - Evaluando corte: carta=${cuttingCardValue}pts, puntos sin combinar=${pointsExcludingCuttingCard}pts`);
+
+        // FACTOR 1: Si tiene 0 puntos sin combinar (excluyendo carta de corte), SIEMPRE cortar
+        if (pointsExcludingCuttingCard === 0) {
+            return {
+                decision: true,
+                reason: `Situación ideal: 0 puntos sin combinar (carta corte: ${cuttingCardValue}pts)`,
+            };
+        }
+
+        // FACTOR 2: Si la carta de corte es de 1 punto y puntos restantes son bajos (≤3), muy probable cortar
+        if (cuttingCardValue === 1 && pointsExcludingCuttingCard <= 3) {
+            // 80% probabilidad de cortar según dificultad
+            const cutProbability = this.difficulty === "hard" ? 0.85 : this.difficulty === "medium" ? 0.75 : 0.9;
+            const shouldCut = Math.random() < cutProbability;
+            
+            if (shouldCut) {
+                return {
+                    decision: true,
+                    reason: `Muy buena situación: carta 1pt, solo ${pointsExcludingCuttingCard}pts restantes`,
+                };
+            } else {
+                return {
+                    decision: false,
+                    reason: `Esperar para mejorar (carta 1pt, ${pointsExcludingCuttingCard}pts)`,
+                };
+            }
+        }
+
+        // FACTOR 3: Si la carta es de 1-2 puntos y puntos restantes son medios (4-6), considerar
+        if (cuttingCardValue <= 2 && pointsExcludingCuttingCard <= 6) {
+            // 60% probabilidad según dificultad
+            const cutProbability = this.difficulty === "hard" ? 0.65 : this.difficulty === "medium" ? 0.55 : 0.7;
+            const shouldCut = Math.random() < cutProbability;
+            
+            if (shouldCut) {
+                return {
+                    decision: true,
+                    reason: `Situación aceptable: carta ${cuttingCardValue}pts, ${pointsExcludingCuttingCard}pts restantes`,
+                };
+            } else {
+                return {
+                    decision: false,
+                    reason: `Intentar mejorar (carta ${cuttingCardValue}pts, ${pointsExcludingCuttingCard}pts)`,
+                };
+            }
+        }
+
+        // FACTOR 4: Si la carta es de 3-4 puntos pero puntos restantes son muy bajos (≤2)
+        if (cuttingCardValue >= 3 && pointsExcludingCuttingCard <= 2) {
+            // 50% probabilidad - es arriesgado
+            const cutProbability = this.difficulty === "hard" ? 0.55 : this.difficulty === "medium" ? 0.45 : 0.6;
+            const shouldCut = Math.random() < cutProbability;
+            
+            if (shouldCut) {
+                return {
+                    decision: true,
+                    reason: `Arriesgado pero aceptable: carta ${cuttingCardValue}pts, solo ${pointsExcludingCuttingCard}pts`,
+                };
+            } else {
+                return {
+                    decision: false,
+                    reason: `Carta de corte muy alta (${cuttingCardValue}pts), buscar mejor oportunidad`,
+                };
+            }
+        }
+
+        // FACTOR 5: Si los puntos totales sin combinar son altos (>7), evaluar riesgo
+        if (pointsExcludingCuttingCard > 7) {
+            // Solo cortar si la carta de corte es muy baja (1-2) y con baja probabilidad
+            if (cuttingCardValue <= 2) {
+                const cutProbability = this.difficulty === "hard" ? 0.3 : this.difficulty === "medium" ? 0.35 : 0.4;
+                const shouldCut = Math.random() < cutProbability;
+                
+                if (shouldCut) {
+                    return {
+                        decision: true,
+                        reason: `Arriesgado: carta ${cuttingCardValue}pts pero ${pointsExcludingCuttingCard}pts restantes`,
+                    };
+                } else {
+                    return {
+                        decision: false,
+                        reason: `Demasiados puntos (${pointsExcludingCuttingCard}pts), intentar mejorar primero`,
+                    };
+                }
+            } else {
+                return {
+                    decision: false,
+                    reason: `Mala situación: carta ${cuttingCardValue}pts + ${pointsExcludingCuttingCard}pts = demasiado riesgo`,
+                };
+            }
+        }
+
+        // FACTOR 6: Situación media - evaluar calidad de combinaciones
+        const hasLongSequence = combinations.some((c) => c.type === "sequence" && c.cards.length >= 5);
+        
+        if (hasLongSequence && cuttingCardValue <= 2 && pointsExcludingCuttingCard <= 5) {
+            // Tiene una buena escalera formándose, podría esperar
+            const cutProbability = this.difficulty === "hard" ? 0.4 : this.difficulty === "medium" ? 0.5 : 0.6;
+            const shouldCut = Math.random() < cutProbability;
+            
+            if (shouldCut) {
+                return {
+                    decision: true,
+                    reason: `Escalera larga pero cortar ahora: ${cuttingCardValue}pts + ${pointsExcludingCuttingCard}pts`,
+                };
+            } else {
+                return {
+                    decision: false,
+                    reason: `Escalera larga (${combinations.find(c => c.type === "sequence" && c.cards.length >= 5)?.cards.length}), esperar 7 cartas`,
+                };
+            }
+        }
+
+        // DEFAULT: Evaluar según dificultad
+        // IA difícil es más conservadora, IA fácil más agresiva
+        const baseProbability = this.difficulty === "hard" ? 0.35 : this.difficulty === "medium" ? 0.5 : 0.65;
+        
+        // Ajustar según puntos
+        const adjustedProbability = baseProbability - (pointsExcludingCuttingCard * 0.05) + ((4 - cuttingCardValue) * 0.1);
+        const shouldCut = Math.random() < Math.max(0.1, Math.min(0.9, adjustedProbability));
+        
+        if (shouldCut) {
+            return {
+                decision: true,
+                reason: `Decisión calculada: prob=${(adjustedProbability * 100).toFixed(0)}%, carta=${cuttingCardValue}pts, resto=${pointsExcludingCuttingCard}pts`,
+            };
+        } else {
+            return {
+                decision: false,
+                reason: `Intentar mejorar: prob=${(adjustedProbability * 100).toFixed(0)}%, puede conseguir mejor mano`,
+            };
+        }
     }
 
     /**
