@@ -231,6 +231,7 @@ export interface GameResponse {
     teamScores: [number, number];
     winner: Team | null;
     maxScore: number;
+    maxPlayers?: number; // Include max players for UI display
 }
 
 // ============================================================================

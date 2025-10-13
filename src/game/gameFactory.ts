@@ -21,7 +21,7 @@ export class TrucoGameFactory implements GameFactory {
     }
 
     getMaxPlayers(): number {
-        return 4;
+        return 6; // Truco can be played with 2, 4, or 6 players
     }
 
     getMinPlayers(): number {
@@ -34,7 +34,8 @@ export class TrucoGameFactory implements GameFactory {
 
     getGameRules(): string[] {
         return [
-            'Juego por equipos de 2 jugadores',
+            'Juego por equipos (2 equipos siempre)',
+            'Puede jugarse de 2 (1v1), 4 (2v2) o 6 (3v3) jugadores',
             'Objetivo: llegar a 15 o 30 puntos',
             'Envido: apuesta por la mejor combinación de cartas del mismo palo',
             'Truco: apuesta por ganar la mano con cartas más altas',

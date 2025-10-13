@@ -276,7 +276,7 @@ export class WebSocketService {
         } = data;
 
         try {
-            const room = this.roomService.createRoom(roomName, playerName, playerId, maxPlayers, isPrivate, password, maxScore, gameType);
+            const room = this.roomService.createRoom(roomName, playerName, playerId, maxPlayers, isPrivate, password, maxScore, gameType, hasAI, aiDifficulty);
 
             // Store player connection
             this.playerConnections.set(playerId, ws);
@@ -299,13 +299,13 @@ export class WebSocketService {
 
                 // Start the game immediately
                 let startedGame = gameService.startGame(room.game.id);
-                
+
                 // For Truco, we also need to deal the first hand (Chinchón does this automatically in startGame)
                 if (gameType === GameType.TRUCO) {
                     startedGame = gameService.dealNewHand(startedGame.id);
                     console.log(`🎴 Dealt first hand for Truco game ${room.id}`);
                 }
-                
+
                 this.roomService.updateRoomGame(room.id, startedGame);
                 this.roomService.setRoomActive(room.id, true);
                 room.game = startedGame;
@@ -349,6 +349,14 @@ export class WebSocketService {
                     }, 500);
                 }
             }
+
+            // Broadcast the updated game state
+            this.sendMessage(ws, {
+                type: WEBSOCKET_MESSAGE_TYPES.GAME_UPDATE,
+                data: {
+                    game: this.getGameService(room.gameType).getGameWithActions(room.game.id),
+                },
+            });
         } catch (error) {
             console.log(`Error!`, error);
             this.sendError(ws, "Error creating room");
@@ -397,7 +405,14 @@ export class WebSocketService {
             });
 
             // Check if we have enough players to start the game
-            if (room.game.players.length >= 2 && !room.isActive) {
+            // For Truco, wait for all players (room.maxPlayers)
+            // For other games, start with minimum 2 players
+            const isTruco = room.gameType === GameType.TRUCO;
+            const shouldStart = isTruco 
+                ? room.game.players.length >= room.maxPlayers 
+                : room.game.players.length >= 2;
+
+            if (shouldStart && !room.isActive) {
                 const gameService = this.getGameService(room.gameType);
                 const startedGame = gameService.startGame(room.game.id);
                 const gameWithHand = gameService.dealNewHand(startedGame.id);
@@ -420,6 +435,14 @@ export class WebSocketService {
             this.broadcastToAll({
                 type: WEBSOCKET_MESSAGE_TYPES.ROOM_LIST_UPDATED,
                 data: { rooms: this.roomService.getAllRooms() },
+            });
+
+            // Broadcast the updated game state
+            this.sendMessage(ws, {
+                type: WEBSOCKET_MESSAGE_TYPES.GAME_UPDATE,
+                data: {
+                    game: this.getGameService(room.gameType).getGameWithActions(room.game.id),
+                },
             });
         } catch (error) {
             this.sendError(ws, "Error joining room");
@@ -474,7 +497,14 @@ export class WebSocketService {
                 });
 
                 // Check if we have enough players to start the game
-                if (room.game.players.length >= 2 && !room.isActive) {
+                // For Truco, wait for all players (room.maxPlayers)
+                // For other games, start with minimum 2 players
+                const isTruco = room.gameType === GameType.TRUCO;
+                const shouldStart = isTruco 
+                    ? room.game.players.length >= room.maxPlayers 
+                    : room.game.players.length >= 2;
+
+                if (shouldStart && !room.isActive) {
                     const gameService = this.getGameService(room.gameType);
                     const startedGame = gameService.startGame(room.game.id);
                     const gameWithHand = gameService.dealNewHand(startedGame.id);

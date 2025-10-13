@@ -63,6 +63,10 @@ export class RoomService {
         const gameService = this.getGameService(gameType);
         const game = gameService.createGame(finalMaxScore, gameType);
 
+        // Update game config with the correct maxPlayers for the room
+        game.gameConfig.maxPlayers = finalMaxPlayers;
+        gameService.updateGame(game);
+
         // Format player name for privacy (only first name + initial of last name)
         const formattedPlayerName = formatPlayerName(playerName);
 

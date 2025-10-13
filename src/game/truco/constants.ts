@@ -136,7 +136,7 @@ export const ACTION_PRIORITIES: Record<ActionType, number> = {
 // ============================================================================
 
 export const TRUCO_GAME_CONFIG: GameConfig = {
-    maxPlayers: 2,
+    maxPlayers: 6, // Can be 2, 4, or 6 players (always 2 teams)
     maxScore: 15,
     cardsPerPlayer: 3,
     maxRoundsPerHand: 3,

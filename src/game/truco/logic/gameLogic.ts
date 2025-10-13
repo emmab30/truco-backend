@@ -187,13 +187,16 @@ export function addPlayer(game: Game, playerId: string, playerName: string, team
  * @returns Updated game object
  */
 export function startGame(game: Game): Game {
-    if (game.players.length < 2) {
-        throw new Error("Not enough players to start game");
+    const playerCount = game.players.length;
+    
+    // Validate player count (must be 2, 4, or 6 for team play)
+    if (playerCount !== 2 && playerCount !== 4 && playerCount !== 6) {
+        throw new Error("Truco must have exactly 2, 4, or 6 players");
     }
 
     // Set dealer and mano randomly
-    const dealerIndex = Math.floor(Math.random() * game.players.length);
-    const manoIndex = (dealerIndex + 1) % game.players.length;
+    const dealerIndex = Math.floor(Math.random() * playerCount);
+    const manoIndex = (dealerIndex + 1) % playerCount;
 
     const updatedPlayers = game.players.map((player, index) => ({
         ...player,

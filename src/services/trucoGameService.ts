@@ -263,7 +263,8 @@ export class TrucoGameService extends BaseGameService {
       currentHand: game.currentHand,
       teamScores: game.teamScores,
       winner: game.winner,
-      maxScore: game.gameConfig.maxScore
+      maxScore: game.gameConfig.maxScore,
+      maxPlayers: game.gameConfig.maxPlayers
     };
   }
 
