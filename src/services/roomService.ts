@@ -2,7 +2,7 @@ import { Room } from "@/shared/types";
 import { RoomResponse, Team } from "@/game/truco/types";
 import { TrucoGameService } from "@/services/trucoGameService";
 import { ChinchonGameService } from "@/services/chinchonGameService";
-import { generateId } from "@/shared/utils/common";
+import { generateId, formatPlayerName } from "@/shared/utils/common";
 import { getGameFactory, isValidGameType } from "@/game/gameFactory";
 import { GameType } from "@/shared/constants";
 import { ChinchonAIService, AIDifficulty } from "@/game/chinchon/ai/aiService";
@@ -63,8 +63,11 @@ export class RoomService {
         const gameService = this.getGameService(gameType);
         const game = gameService.createGame(finalMaxScore, gameType);
 
+        // Format player name for privacy (only first name + initial of last name)
+        const formattedPlayerName = formatPlayerName(playerName);
+
         // Add the creator as the first player
-        let updatedGame = gameService.addPlayerToGame(game.id, playerId, playerName, Team.TEAM_1);
+        let updatedGame = gameService.addPlayerToGame(game.id, playerId, formattedPlayerName, Team.TEAM_1);
 
         // Add AI player if requested and game type is Chinchón
         if (hasAI && gameType === GameType.CHINCHON) {
@@ -124,10 +127,13 @@ export class RoomService {
             return null;
         }
 
+        // Format player name for privacy (only first name + initial of last name)
+        const formattedPlayerName = formatPlayerName(playerName);
+
         // Add player to game
         const team = room.game.players.length % 2;
         const gameService = this.getGameService(room.gameType);
-        const updatedGame = gameService.addPlayerToGame(room.game.id, playerId, playerName, team);
+        const updatedGame = gameService.addPlayerToGame(room.game.id, playerId, formattedPlayerName, team);
 
         room.game = updatedGame;
         this.playerRooms.set(playerId, roomId);

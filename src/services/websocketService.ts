@@ -374,11 +374,15 @@ export class WebSocketService {
             this.playerConnections.set(playerId, ws);
             this.roomService.addConnection(roomId, playerId, ws);
 
+            // Get the formatted player name from the game (already formatted for privacy)
+            const joinedPlayer = room.game.players.find((p: any) => p.id === playerId);
+            const formattedPlayerName = joinedPlayer?.name || playerName;
+
             // Notify all players in room
             this.broadcastToRoom(roomId, {
                 type: WEBSOCKET_MESSAGE_TYPES.PLAYER_JOINED,
                 data: {
-                    player: { id: playerId, name: playerName },
+                    player: { id: playerId, name: formattedPlayerName },
                     game: this.getGameService(room.gameType).getGameWithActions(room.game.id),
                 },
             });

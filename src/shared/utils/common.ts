@@ -75,3 +75,22 @@ export function isValidRoomId(roomId: string): boolean {
     return typeof roomId === "string" && roomId.length > 0 && roomId.length <= 100;
 }
 
+/**
+ * Format player name for privacy
+ * Extracts first name and first letter of last name
+ * @param fullName - Full name of the player
+ * @returns Formatted name with privacy
+ */
+export function formatPlayerName(fullName?: string | null): string {
+    if (!fullName || typeof fullName !== "string") {
+        return "Jugador";
+    }
+
+    const names = fullName.split(" ");
+    const firstName = names[0];
+    const lastName = names[names.length - 1]?.charAt(0).toUpperCase();
+
+    if (!lastName) return firstName!;
+
+    return `${firstName} ${lastName}.`;
+}
