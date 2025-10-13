@@ -62,7 +62,9 @@ export class TrucoAI {
             const envidoWasResolved = currentHand.envidoState?.winner !== undefined;
             
             if (isFirstRound && !envidoWasResolved) {
-                const envidoPoints = this.calculateEnvidoPoints(player.cards);
+                // Use original cards for envido calculation
+                const myOriginalCards = currentHand.playerOriginalCards?.get(this.playerId) || player.cards;
+                const envidoPoints = this.calculateEnvidoPoints(myOriginalCards);
                 const shouldCallEnvido = this.shouldCallEnvidoOverTruco(envidoPoints, player);
                 
                 if (shouldCallEnvido) {
@@ -116,7 +118,9 @@ export class TrucoAI {
         // Cantar envido estratégicamente en primera ronda
         const envidoWasResolved = currentHand.envidoState?.winner !== undefined;
         if (currentRound.number === 1 && currentRound.cardsPlayed.length === 0 && !currentHand.envidoState?.isActive && !currentHand.trucoState?.isActive && !envidoWasResolved) {
-            const envidoPoints = this.calculateEnvidoPoints(player.cards);
+            // Use original cards for envido calculation
+            const myOriginalCards = currentHand.playerOriginalCards?.get(this.playerId) || player.cards;
+            const envidoPoints = this.calculateEnvidoPoints(myOriginalCards);
             const shouldCallEnvido = this.shouldCallEnvido(envidoPoints, player, opponent);
 
             if (shouldCallEnvido) {
@@ -216,7 +220,10 @@ export class TrucoAI {
     private decideEnvidoResponse(game: Game, player: Player): AIAction {
         const currentHand = game.currentHand!;
         const envidoState = currentHand.envidoState!;
-        const myEnvidoPoints = this.calculateEnvidoPoints(player.cards);
+        
+        // Use original cards for envido calculation
+        const myOriginalCards = currentHand.playerOriginalCards?.get(this.playerId) || player.cards;
+        const myEnvidoPoints = this.calculateEnvidoPoints(myOriginalCards);
 
         console.log(`🤖 IA ${this.playerId} - Responder a ENVIDO: Tengo ${myEnvidoPoints} puntos`);
 

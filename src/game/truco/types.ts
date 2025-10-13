@@ -75,6 +75,7 @@ export interface Hand {
     points: number;
     envidoState: EnvidoState;
     trucoState: TrucoState;
+    playerOriginalCards: Map<string, Card[]>; // Cartas originales de cada jugador para calcular envido
 }
 
 export interface Game {

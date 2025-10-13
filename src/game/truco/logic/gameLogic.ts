@@ -235,9 +235,16 @@ export function dealNewHand(game: Game): Game {
     // Create and shuffle deck
     const deck = createShuffledDeck();
 
+    // Create map to store original cards for envido calculation
+    const playerOriginalCards = new Map<string, Card[]>();
+
     // Deal cards to players and reset game state
     const updatedPlayers = game.players.map((player, index) => {
         const playerCards = deck.slice(index * 3, (index + 1) * 3).map(createCardFromString);
+        
+        // Store original cards for envido calculation
+        playerOriginalCards.set(player.id, [...playerCards]);
+        
         return {
             ...player,
             cards: playerCards,
@@ -276,6 +283,7 @@ export function dealNewHand(game: Game): Game {
             currentRound: 0,
             winner: null,
             points: 0,
+            playerOriginalCards: playerOriginalCards,
             envidoState: {
                 isActive: false,
                 currentCall: null,
@@ -649,11 +657,14 @@ export function respondEnvido(game: Game, playerId: string, response: EnvidoResp
         const caller = game.players.find((p) => p.id === callerId);
         const responder = game.players.find((p) => p.id === playerId);
 
-        if (!caller || !responder) return game;
+        if (!caller || !responder || !callerId) return game;
 
-        // Calculate envido points for both players
-        const callerPoints = calculateEnvidoPoints(caller.cards);
-        const responderPoints = calculateEnvidoPoints(responder.cards);
+        // Calculate envido points using ORIGINAL cards (not remaining cards)
+        const callerOriginalCards = currentHand.playerOriginalCards.get(callerId) || caller.cards;
+        const responderOriginalCards = currentHand.playerOriginalCards.get(playerId) || responder.cards;
+        
+        const callerPoints = calculateEnvidoPoints(callerOriginalCards);
+        const responderPoints = calculateEnvidoPoints(responderOriginalCards);
 
         // Determine winner (in case of tie, mano wins)
         const callerIsMano = caller.isMano;
