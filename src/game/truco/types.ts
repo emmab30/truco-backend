@@ -41,6 +41,7 @@ export interface EnvidoState {
     originalCaller: string | null;
     responses: Map<string, EnvidoResponse>;
     playedLevels: EnvidoCall[];
+    envidoCount: number; // Contador de cuántos "Envido" se han cantado (máximo 2)
     winner?: Team;
     callerPoints?: number;
     responderPoints?: number;

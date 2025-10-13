@@ -88,14 +88,18 @@ export function getAvailableActions(game: Game, playerId: string): Action[] {
                     
                     // Can raise based on current call
                     const currentCall = envidoState.currentCall;
+                    const envidoCount = envidoState.envidoCount || 0;
                     
                     if (currentCall === EnvidoCall.ENVIDO) {
-                        // Can equal with Envido or raise
-                        actions.push({
-                            type: ActionType.ENVIDO,
-                            label: "Envido",
-                            priority: ACTION_PRIORITIES[ActionType.ENVIDO],
-                        });
+                        // Can only call another Envido if we haven't reached the limit of 2
+                        if (envidoCount < 2) {
+                            actions.push({
+                                type: ActionType.ENVIDO,
+                                label: "Envido",
+                                priority: ACTION_PRIORITIES[ActionType.ENVIDO],
+                            });
+                        }
+                        // Can always raise to Real Envido or Falta Envido
                         actions.push({
                             type: ActionType.REAL_ENVIDO,
                             label: "Real Envido",
@@ -222,12 +226,18 @@ export function getAvailableActions(game: Game, playerId: string): Action[] {
                 }
             } else {
                 // Non-original caller can equal or raise
+                const envidoCount = envidoState?.envidoCount || 0;
+                
                 if (currentCall === EnvidoCall.ENVIDO) {
-                    actions.push({
-                        type: ActionType.ENVIDO,
-                        label: "Envido",
-                        priority: ACTION_PRIORITIES[ActionType.ENVIDO],
-                    });
+                    // Can only call another Envido if we haven't reached the limit of 2
+                    if (envidoCount < 2) {
+                        actions.push({
+                            type: ActionType.ENVIDO,
+                            label: "Envido",
+                            priority: ACTION_PRIORITIES[ActionType.ENVIDO],
+                        });
+                    }
+                    // Can always raise to Real Envido or Falta Envido
                     actions.push({
                         type: ActionType.REAL_ENVIDO,
                         label: "Real Envido",

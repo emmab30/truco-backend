@@ -68,7 +68,8 @@ export class TrucoAI {
                 const shouldCallEnvido = this.shouldCallEnvidoOverTruco(envidoPoints, player);
                 
                 if (shouldCallEnvido) {
-                    const envidoCall = this.chooseEnvidoCall(envidoPoints, player, game.players.find(p => p.id !== this.playerId)!);
+                    const envidoCount = currentHand.envidoState?.envidoCount || 0;
+                    const envidoCall = this.chooseEnvidoCall(envidoPoints, player, game.players.find(p => p.id !== this.playerId)!, envidoCount);
                     console.log(`🤖 IA ${this.playerId} - 🎯 CANTAR ENVIDO EN VEZ DE RESPONDER TRUCO: ${envidoCall} (tengo ${envidoPoints})`);
                     return {
                         type: "envido",
@@ -124,7 +125,8 @@ export class TrucoAI {
             const shouldCallEnvido = this.shouldCallEnvido(envidoPoints, player, opponent);
 
             if (shouldCallEnvido) {
-                const envidoCall = this.chooseEnvidoCall(envidoPoints, player, opponent);
+                const envidoCount = currentHand.envidoState?.envidoCount || 0;
+                const envidoCall = this.chooseEnvidoCall(envidoPoints, player, opponent, envidoCount);
                 console.log(`🤖 IA ${this.playerId} - 🎯 CANTAR ENVIDO: ${envidoCall} (tengo ${envidoPoints})`);
                 return {
                     type: "envido",
@@ -457,12 +459,15 @@ export class TrucoAI {
     /**
      * Elige qué tipo de envido cantar
      */
-    private chooseEnvidoCall(myPoints: number, _player: Player, _opponent: Player): EnvidoCall {
+    private chooseEnvidoCall(myPoints: number, _player: Player, _opponent: Player, envidoCount: number = 0): EnvidoCall {
         // Si tengo 33 o más, canto Falta Envido
         if (myPoints >= 33) return EnvidoCall.FALTA_ENVIDO;
 
         // Si tengo 30-32, canto Real Envido
         if (myPoints >= 30) return EnvidoCall.REAL_ENVIDO;
+
+        // Si ya se han cantado 2 "Envido", no puedo cantar otro, subo a Real Envido
+        if (envidoCount >= 2) return EnvidoCall.REAL_ENVIDO;
 
         // Sino, Envido normal
         return EnvidoCall.ENVIDO;

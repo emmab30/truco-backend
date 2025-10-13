@@ -291,6 +291,7 @@ export function dealNewHand(game: Game): Game {
                 originalCaller: null,
                 responses: new Map(),
                 playedLevels: [],
+                envidoCount: 0,
             },
             trucoState: {
                 isActive: false,
@@ -525,6 +526,7 @@ export function callEnvido(game: Game, playerId: string, call: EnvidoCall): Game
         originalCaller: null,
         responses: new Map(),
         playedLevels: [],
+        envidoCount: 0,
     };
 
     // If there's an active truco, cancel it (envido has priority in first round)
@@ -546,6 +548,9 @@ export function callEnvido(game: Game, playerId: string, call: EnvidoCall): Game
         
         // Add the new level to played levels
         const newPlayedLevels = [...currentEnvidoState.playedLevels, newCall];
+        
+        // Increment envido count if the new call is ENVIDO
+        const newEnvidoCount = call === EnvidoCall.ENVIDO ? currentEnvidoState.envidoCount + 1 : currentEnvidoState.envidoCount;
 
         return {
             ...game,
@@ -560,12 +565,15 @@ export function callEnvido(game: Game, playerId: string, call: EnvidoCall): Game
                     originalCaller: currentEnvidoState.originalCaller, // Keep original caller
                     responses: new Map(), // Reset responses for new call
                     playedLevels: newPlayedLevels,
+                    envidoCount: newEnvidoCount,
                 },
             },
         };
     }
 
     // New envido call
+    const initialEnvidoCount = call === EnvidoCall.ENVIDO ? 1 : 0;
+    
     return {
         ...game,
         phase: GamePhase.ENVIDO,
@@ -580,6 +588,7 @@ export function callEnvido(game: Game, playerId: string, call: EnvidoCall): Game
                 originalCaller: playerId, // Set original caller for first call
                 responses: new Map(),
                 playedLevels: [call], // Add first level
+                envidoCount: initialEnvidoCount,
             },
         },
     };
@@ -618,6 +627,8 @@ export function respondEnvido(game: Game, playerId: string, response: EnvidoResp
         currentCaller: null,
         originalCaller: null,
         responses: new Map(),
+        playedLevels: [],
+        envidoCount: 0,
     };
 
     // Handle "no-quiero" response
