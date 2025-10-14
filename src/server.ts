@@ -161,6 +161,22 @@ server.listen(PORT, HOST, () => {
     console.log(`   📡 HTTP: http://${HOST}:${PORT}`);
     console.log(`   🔌 WebSocket: ws://${HOST}:${PORT}/ws`);
     console.log(`   🌐 CORS: ${SERVER_CONFIG.corsOrigin}`);
+    
+    // Start room cleanup job (runs every minute)
+    const CLEANUP_INTERVAL = 1 * 60 * 1000; // 1 minute
+    const cleanupInterval = setInterval(() => {
+        const stats = roomService.getRoomStats();
+        console.log(`🧹 Running room cleanup... Stats: ${stats.totalRooms} rooms (${stats.activeRooms} active, ${stats.emptyRooms} empty) | ${stats.totalPlayers} players`);
+        const cleanedCount = roomService.cleanupEmptyRooms();
+        if (cleanedCount > 0) {
+            console.log(`✅ Cleanup complete: removed ${cleanedCount} empty room(s)`);
+        }
+    }, CLEANUP_INTERVAL);
+    
+    // Store cleanup interval reference for graceful shutdown
+    (server as any).cleanupInterval = cleanupInterval;
+    
+    console.log(`   🧹 Room cleanup enabled (runs every ${CLEANUP_INTERVAL / 60000} minutes)`);
 });
 
 // ============================================================================
@@ -169,6 +185,12 @@ server.listen(PORT, HOST, () => {
 
 function gracefulShutdown(signal: string) {
     console.log(`${signal} received, shutting down gracefully`);
+    
+    // Stop cleanup interval
+    if ((server as any).cleanupInterval) {
+        clearInterval((server as any).cleanupInterval);
+        console.log("Room cleanup interval stopped");
+    }
     
     // Close WebSocket Server first
     console.log("Closing WebSocket connections...");

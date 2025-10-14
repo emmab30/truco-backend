@@ -320,6 +320,78 @@ export class RoomService {
     }
 
     /**
+     * Clean up empty rooms (rooms with no active WebSocket connections)
+     * This should be called periodically to free up resources
+     * @returns Number of rooms cleaned up
+     */
+    cleanupEmptyRooms(): number {
+        const roomsToDelete: string[] = [];
+        const now = Date.now();
+        const ROOM_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+
+        for (const [roomId, room] of this.rooms.entries()) {
+            // Check if room has any active connections
+            const hasActiveConnections = room.connections.size > 0;
+            const roomAge = now - room.createdAt.getTime();
+
+            // Delete room if:
+            // 1. It has no active connections
+            // 2. AND it's been inactive for more than 30 minutes
+            if (!hasActiveConnections && roomAge > ROOM_TIMEOUT) {
+                roomsToDelete.push(roomId);
+            }
+        }
+
+        // Delete the rooms
+        for (const roomId of roomsToDelete) {
+            const room = this.rooms.get(roomId);
+            if (room) {
+                console.log(`🧹 Cleaning up empty room: ${room.name} (${roomId}) - Age: ${Math.round((now - room.createdAt.getTime()) / 60000)} minutes`);
+                
+                // Remove all player mappings
+                for (const player of room.game.players) {
+                    this.playerRooms.delete(player.id);
+                }
+                
+                // Delete the room
+                this.rooms.delete(roomId);
+            }
+        }
+
+        if (roomsToDelete.length > 0) {
+            console.log(`🧹 Cleaned up ${roomsToDelete.length} empty room(s). Active rooms: ${this.rooms.size}`);
+        }
+
+        return roomsToDelete.length;
+    }
+
+    /**
+     * Get statistics about rooms
+     * @returns Room statistics
+     */
+    getRoomStats(): { totalRooms: number; activeRooms: number; emptyRooms: number; totalPlayers: number } {
+        let activeRooms = 0;
+        let emptyRooms = 0;
+        let totalPlayers = 0;
+
+        for (const room of this.rooms.values()) {
+            if (room.connections.size > 0) {
+                activeRooms++;
+                totalPlayers += room.connections.size;
+            } else {
+                emptyRooms++;
+            }
+        }
+
+        return {
+            totalRooms: this.rooms.size,
+            activeRooms,
+            emptyRooms,
+            totalPlayers,
+        };
+    }
+
+    /**
      * Convert room to response format
      * @param room - Room object
      * @returns Room response
