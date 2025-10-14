@@ -406,12 +406,8 @@ export class WebSocketService {
             });
 
             // Check if we have enough players to start the game
-            // For Truco, wait for all players (room.maxPlayers)
-            // For other games, start with minimum 2 players
-            const isTruco = room.gameType === GameType.TRUCO;
-            const shouldStart = isTruco 
-                ? room.game.players.length >= room.maxPlayers 
-                : room.game.players.length >= 2;
+            // Wait for all players to join (room.maxPlayers)
+            const shouldStart = room.game.players.length >= room.maxPlayers;
 
             if (shouldStart && !room.isActive) {
                 const gameService = this.getGameService(room.gameType);
@@ -498,12 +494,8 @@ export class WebSocketService {
                 });
 
                 // Check if we have enough players to start the game
-                // For Truco, wait for all players (room.maxPlayers)
-                // For other games, start with minimum 2 players
-                const isTruco = room.gameType === GameType.TRUCO;
-                const shouldStart = isTruco 
-                    ? room.game.players.length >= room.maxPlayers 
-                    : room.game.players.length >= 2;
+                // Wait for all players to join (room.maxPlayers)
+                const shouldStart = room.game.players.length >= room.maxPlayers;
 
                 if (shouldStart && !room.isActive) {
                     const gameService = this.getGameService(room.gameType);
