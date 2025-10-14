@@ -582,26 +582,31 @@ export class TrucoGameHandler extends AbstractGameHandler {
             return;
         }
 
-        // Find AI player
-        const aiPlayer = room.game.players.find((p: any) => this.isAIPlayer(p.id));
-        if (!aiPlayer) {
-            console.log(`⏭️ No AI player in game`);
-            return;
+        // Determine which AI player needs to act
+        let aiPlayer: any = null;
+
+        if (gamePhase === "envido" && room.game.currentHand.envidoState) {
+            // For envido, find the AI that is NOT the caller (the one that needs to respond)
+            const envidoCaller = room.game.currentHand.envidoState.currentCaller;
+            aiPlayer = room.game.players.find((p: any) => this.isAIPlayer(p.id) && p.id !== envidoCaller);
+        } else if (gamePhase === "truco" && room.game.currentHand.trucoState) {
+            // For truco, find the AI that is NOT the caller (the one that needs to respond)
+            const trucoCaller = room.game.currentHand.trucoState.currentCaller;
+            aiPlayer = room.game.players.find((p: any) => this.isAIPlayer(p.id) && p.id !== trucoCaller);
+        } else if (gamePhase === "playing") {
+            // For playing phase, check if current player is AI
+            const currentPlayer = room.game.players.find((p: any) => p.id === currentPlayerId);
+            if (currentPlayer && this.isAIPlayer(currentPlayer.id)) {
+                aiPlayer = currentPlayer;
+            }
         }
 
-        // Check if AI needs to respond to envido/truco
-        const needsEnvidoResponse = gamePhase === "envido" && room.game.currentHand.envidoState?.currentCaller !== aiPlayer.id;
-        const needsTrucoResponse = gamePhase === "truco" && room.game.currentHand.trucoState?.currentCaller !== aiPlayer.id;
-
-        // Check if it's AI's turn to play a card
-        const isAITurnToPlay = gamePhase === "playing" && currentPlayerId === aiPlayer.id;
-
-        if (!needsEnvidoResponse && !needsTrucoResponse && !isAITurnToPlay) {
+        if (!aiPlayer) {
             console.log(`⏭️ Not AI's turn or AI doesn't need to respond`);
             return;
         }
 
-        console.log(`🤖 AI needs to act: envido=${needsEnvidoResponse}, truco=${needsTrucoResponse}, play=${isAITurnToPlay}`);
+        console.log(`🤖 AI ${aiPlayer.name} (${aiPlayer.id}) needs to act in phase ${gamePhase}`);
 
         // Acquire lock
         this.aiTurnLocks.set(roomId, true);

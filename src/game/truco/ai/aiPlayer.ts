@@ -510,9 +510,10 @@ export class TrucoAI {
     /**
      * Obtiene el nombre del bot
      */
-    getAIName(): string {
-        const names = ["IA Experta", "Bot Maestro", "IA Avanzada"];
-        return names[Math.floor(Math.random() * names.length)]!;
+    getAIName(playerCount: number = 0): string {
+        const names = ["IA Experta", "Bot Maestro", "IA Avanzada", "IA Pro", "Bot Campeón", "IA Suprema"];
+        // Use playerCount to ensure different names
+        return names[playerCount % names.length]!;
     }
 
     /**

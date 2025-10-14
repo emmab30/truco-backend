@@ -11,20 +11,25 @@ export type AIDifficulty = "hard";
 
 export class TrucoAIService {
     private aiPlayers: Map<string, TrucoAI> = new Map();
+    private aiCounter: number = 0; // Counter to ensure unique IDs and names
 
     /**
      * Creates an IA player and adds it to the game
      */
     createAIPlayer(game: Game): Player {
-        const aiId = `ia_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        this.aiCounter++;
+        const aiId = `ia_${Date.now()}_${this.aiCounter}_${Math.random().toString(36).substr(2, 9)}`;
         const ai = new TrucoAI(aiId);
 
         this.aiPlayers.set(aiId, ai);
 
+        // Pass player count to get unique AI name
+        const playerCount = game.players.length;
+
         const aiPlayer: Player = {
             id: aiId,
-            name: ai.getAIName(),
-            team: 1, // IA siempre en equipo 1
+            name: ai.getAIName(playerCount),
+            team: 1, // IA siempre en equipo 1 (will be overridden by caller)
             position: game.players.length,
             cards: [],
             isDealer: false,

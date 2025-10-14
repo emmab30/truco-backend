@@ -285,15 +285,16 @@ export class WebSocketService {
             // Get the appropriate game service based on game type
             const gameService = this.getGameService(room.gameType);
 
-            // If AI mode is enabled, add AI player and start game automatically
+            // If AI mode is enabled, add AI player(s) and start game automatically
             if (hasAI && (gameType === GameType.CHINCHON || gameType === GameType.TRUCO)) {
-                console.log(`🤖 Creating AI player for room ${room.id} with difficulty: ${aiDifficulty}`);
+                console.log(`🤖 Creating AI player(s) for room ${room.id} with difficulty: ${aiDifficulty}, maxPlayers: ${maxPlayers}`);
 
-                // Add AI player to the game
-                // For Truco, difficulty is always "hard", for Chinchon we pass the selected difficulty
+                // Add AI player(s) to the game
                 if (gameType === GameType.TRUCO) {
-                    (gameService as any).addAIPlayerToGame(room.game.id);
+                    // For Truco, add multiple AI players based on maxPlayers (2 or 4)
+                    (gameService as any).addAIPlayersForTeamPlay(room.game.id, maxPlayers);
                 } else {
+                    // For Chinchon, only support 2 players with AI
                     (gameService as any).addAIPlayerToGame(room.game.id, aiDifficulty);
                 }
 
@@ -311,7 +312,7 @@ export class WebSocketService {
                 room.game = startedGame;
                 room.isActive = true;
 
-                console.log(`🎮 AI game started automatically for room ${room.id}`);
+                console.log(`🎮 AI game started automatically for room ${room.id} with ${maxPlayers} players`);
             }
 
             this.sendMessage(ws, {
