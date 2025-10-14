@@ -294,8 +294,8 @@ export class WebSocketService {
                     // For Truco, add multiple AI players based on maxPlayers (2 or 4)
                     (gameService as any).addAIPlayersForTeamPlay(room.game.id, maxPlayers);
                 } else {
-                    // For Chinchon, only support 2 players with AI
-                    (gameService as any).addAIPlayerToGame(room.game.id, aiDifficulty);
+                    // For Chinchón, add multiple AI players based on maxPlayers (2-6)
+                    (gameService as any).addAIPlayersForMultiplayer(room.game.id, maxPlayers, aiDifficulty);
                 }
 
                 // Start the game immediately

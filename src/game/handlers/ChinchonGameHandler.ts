@@ -470,6 +470,7 @@ export class ChinchonGameHandler extends AbstractGameHandler {
         console.log(`🔒 Acquired AI lock for room ${roomId}`);
 
         console.log(`🤖 AI turn detected for player ${currentPlayerId}`);
+        console.log(`🔍 Handler aiService has ${(this.aiService as any).aiPlayers?.size || 0} registered AI players`);
 
         try {
             // Get fresh game state before executing AI action

@@ -73,26 +73,15 @@ export class RoomService {
         // Add the creator as the first player
         let updatedGame = gameService.addPlayerToGame(game.id, playerId, formattedPlayerName, Team.TEAM_1);
 
-        // Add AI player if requested and game type is Chinchón
-        if (hasAI && gameType === GameType.CHINCHON) {
-            const aiPlayer = this.aiService.createAIPlayer(updatedGame, aiDifficulty);
-            updatedGame = gameService.addPlayerToGame(updatedGame.id, aiPlayer.id, aiPlayer.name, Team.TEAM_2);
-            console.log(`🤖 AI player added: ${aiPlayer.name} (${aiDifficulty})`);
-        }
-
-        // Si hay IA, iniciar el juego automáticamente
-        if (hasAI && gameType === GameType.CHINCHON && updatedGame.players.length >= 2) {
-            console.log(`🤖 Iniciando juego automáticamente con IA`);
-            updatedGame = gameService.startGame(updatedGame.id);
-            console.log(`🤖 Juego iniciado, cartas repartidas`);
-        }
+        // NOTE: AI players are now added in websocketService.ts after room creation
+        // This ensures all AI players use the same aiService instance as the handler
 
         const room: Room = {
             id: roomId,
             name: roomName,
             game: updatedGame,
             maxPlayers: finalMaxPlayers,
-            isActive: hasAI && gameType === GameType.CHINCHON, // Activar automáticamente si hay IA
+            isActive: false, // Will be activated in websocketService after AI players are added
             connections: new Map(),
             createdAt: new Date(),
             isPrivate,

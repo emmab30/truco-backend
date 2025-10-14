@@ -10,7 +10,7 @@ import { GameConfig } from "@/game/chinchon/types";
 // ============================================================================
 
 export const CHINCHON_CONFIG: GameConfig = {
-    maxPlayers: 6,
+    maxPlayers: 6, // Maximum 6 players in a game
     maxScore: 100, // Points to eliminate a player
     cardsPerPlayer: 7,
     maxRoundsPerHand: 10,

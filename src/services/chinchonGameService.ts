@@ -62,6 +62,47 @@ export class ChinchonGameService extends BaseGameService {
     }
 
     /**
+     * Add multiple AI players for a multi-player Chinchón game
+     * For Chinchón: maxPlayers can be 2-6, we add (maxPlayers - 1) AI players
+     * since the human player is already in the game
+     */
+    addAIPlayersForMultiplayer(gameId: string, maxPlayers: number = 2, difficulty: AIDifficulty = "medium"): Game {
+        const game = this.getGame(gameId);
+        if (!game) {
+            throw new Error("Game not found");
+        }
+
+        console.log(`🔍 AI Service status:`, this.aiService ? 'initialized' : 'NOT INITIALIZED');
+        
+        if (!this.aiService) {
+            throw new Error("AI Service not initialized. Call setAIService first.");
+        }
+
+        // Calculate how many AI players we need (total - 1 human player)
+        const numAIPlayers = Math.max(1, Math.min(5, maxPlayers - 1)); // Ensure at least 1, max 5 AI players
+
+        console.log(`🤖 Adding ${numAIPlayers} AI player(s) for ${maxPlayers}-player Chinchón game with difficulty: ${difficulty}`);
+
+        let updatedGame = game;
+        for (let i = 0; i < numAIPlayers; i++) {
+            // Create AI player using the AI service
+            const aiPlayer = this.aiService.createAIPlayer(updatedGame, difficulty);
+            console.log(`🤖 Created AI player ${i + 1}/${numAIPlayers}: ${aiPlayer.name} (${aiPlayer.id})`);
+
+            // Add AI player to game
+            updatedGame = addPlayer(updatedGame, aiPlayer.id, aiPlayer.name, Team.TEAM_1);
+            console.log(`✅ Added AI player ${i + 1}/${numAIPlayers} to game: ${aiPlayer.name} (${aiPlayer.id})`);
+        }
+
+        updatedGame.iaMode = true;
+        this.updateGame(updatedGame);
+
+        console.log(`🤖 Successfully added ${numAIPlayers} AI players to game ${gameId}`);
+        console.log(`📊 Current aiService has ${(this.aiService as any).aiPlayers?.size || 0} registered AI players`);
+        return updatedGame;
+    }
+
+    /**
      * Start a game
      */
     startGame(gameId: string): Game {
@@ -322,9 +363,11 @@ export class ChinchonGameService extends BaseGameService {
             id: game.id,
             phase: game.phase,
             players: playersWithActions,
+            currentPlayerId: game.currentHand?.chinchonState?.currentPlayerId, // Add for easy frontend access
             currentHand: {
                 ...game.currentHand,
                 chinchonState: serializedChinchonState,
+                currentPlayerId: game.currentHand?.chinchonState?.currentPlayerId, // Also add at hand level
             },
             teamScores: game.teamScores,
             winner: game.winner,

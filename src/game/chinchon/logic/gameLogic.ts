@@ -340,12 +340,17 @@ function checkWinConditionsAfterDiscard(chinchonState: ChinchonState, currentPla
 
     if (chinchonCombo) {
         console.log("🎯 CHINCHÓN DETECTED! 7-card sequence of same suit");
-        const losingPlayer = allPlayers.find((p) => p.id !== playerId);
-        const losingPlayerScore = calculateLosingPlayerScore(chinchonState, losingPlayer!);
-
+        
         const roundScores = new Map<string, number>();
         roundScores.set(playerId, -10); // Winner gets -10
-        roundScores.set(losingPlayer!.id, losingPlayerScore);
+        
+        // Calculate scores for ALL other players
+        allPlayers.forEach((player) => {
+            if (player.id !== playerId) {
+                const playerScore = calculateLosingPlayerScore(chinchonState, player);
+                roundScores.set(player.id, playerScore);
+            }
+        });
 
         return {
             hasWon: true,
@@ -361,12 +366,17 @@ function checkWinConditionsAfterDiscard(chinchonState: ChinchonState, currentPla
         // Must be exactly 7 cards in combinations (e.g., 3+4)
         if (totalCombinedCards === 7) {
             console.log("🎯 CLOSE WITH 7 CARDS! All cards combined");
-            const losingPlayer = allPlayers.find((p) => p.id !== playerId);
-            const losingPlayerScore = calculateLosingPlayerScore(chinchonState, losingPlayer!);
-
+            
             const roundScores = new Map<string, number>();
             roundScores.set(playerId, -10); // Winner gets -10
-            roundScores.set(losingPlayer!.id, losingPlayerScore);
+            
+            // Calculate scores for ALL other players
+            allPlayers.forEach((player) => {
+                if (player.id !== playerId) {
+                    const playerScore = calculateLosingPlayerScore(chinchonState, player);
+                    roundScores.set(player.id, playerScore);
+                }
+            });
 
             return {
                 hasWon: true,
@@ -430,13 +440,20 @@ export function cutWithCard(game: Game, playerId: string, cardId: string): Game 
     const uncombinedCards = player.cards.filter((card: any) => !combinedCardIds.has(card.id));
     const uncombinedCardsExcludingCuttingCard = uncombinedCards.filter((card: any) => card.id !== cardId);
     const cuttingPlayerScore = uncombinedCardsExcludingCuttingCard.reduce((sum: number, card: any) => sum + (card.chinchonValue || 0), 0);
-    
-    const losingPlayer = game.players.find((p) => p.id !== playerId);
-    const losingPlayerScore = calculateLosingPlayerScore(game.currentHand.chinchonState, losingPlayer!);
 
     const updatedRoundScores = new Map<string, number>();
     updatedRoundScores.set(playerId, cuttingPlayerScore);
-    updatedRoundScores.set(losingPlayer!.id, losingPlayerScore);
+    
+    // Calculate scores for ALL other players
+    if (game.currentHand) {
+        game.players.forEach((p) => {
+            if (p.id !== playerId) {
+                const playerScore = calculateLosingPlayerScore(game.currentHand!.chinchonState, p);
+                updatedRoundScores.set(p.id, playerScore);
+                console.log(`🎯 Player ${p.name} score: ${playerScore}`);
+            }
+        });
+    }
 
     const updatedChinchonState = {
         ...game.currentHand.chinchonState,
@@ -445,25 +462,25 @@ export function cutWithCard(game: Game, playerId: string, cardId: string): Game 
         roundWinner: playerId,
     };
 
-    console.log(`🎯 Cut scores - Cutter: ${cuttingPlayerScore}, Loser: ${losingPlayerScore}`);
+    console.log(`🎯 Cut scores - Cutter: ${cuttingPlayerScore}`);
 
     // Update players' scores and remove cutting card
     const updatedPlayers = game.players.map((p) => {
+        const scoreChange = updatedRoundScores.get(p.id) || 0;
+        const newScore = (p.totalScore || 0) + scoreChange;
+        
         if (p.id === playerId) {
-            const newScore = (p.totalScore || 0) + cuttingPlayerScore;
             return {
                 ...p,
                 cards: p.cards.filter((c) => c.id !== cardId),
                 totalScore: newScore,
             };
-        } else if (p.id === losingPlayer?.id) {
-            const newScore = (p.totalScore || 0) + losingPlayerScore;
+        } else {
             return {
                 ...p,
                 totalScore: newScore,
             };
         }
-        return p;
     });
 
     return {
@@ -499,12 +516,18 @@ export function closeRound(game: Game, playerId: string): Game {
     // For now, just close with current score
     const finalScore = playerScore;
 
-    const losingPlayer = game.players.find((p) => p.id !== playerId);
-    const losingPlayerScore = calculateLosingPlayerScore(game.currentHand.chinchonState, losingPlayer!);
-
     const updatedRoundScores = new Map(game.currentHand.chinchonState.roundScores);
     updatedRoundScores.set(playerId, finalScore);
-    updatedRoundScores.set(losingPlayer?.id || "", losingPlayerScore);
+    
+    // Calculate scores for ALL other players
+    if (game.currentHand) {
+        game.players.forEach((p) => {
+            if (p.id !== playerId) {
+                const otherPlayerScore = calculateLosingPlayerScore(game.currentHand!.chinchonState, p);
+                updatedRoundScores.set(p.id, otherPlayerScore);
+            }
+        });
+    }
 
     const updatedChinchonState = {
         ...game.currentHand.chinchonState,
@@ -514,20 +537,12 @@ export function closeRound(game: Game, playerId: string): Game {
     };
 
     const updatedPlayers = game.players.map((p) => {
-        if (p.id === playerId) {
-            const newScore = (p.totalScore || 0) + finalScore;
-            return {
-                ...p,
-                totalScore: newScore,
-            };
-        } else if (p.id === losingPlayer?.id) {
-            const newScore = (p.totalScore || 0) + losingPlayerScore;
-            return {
-                ...p,
-                totalScore: newScore,
-            };
-        }
-        return p;
+        const scoreChange = updatedRoundScores.get(p.id) || 0;
+        const newScore = (p.totalScore || 0) + scoreChange;
+        return {
+            ...p,
+            totalScore: newScore,
+        };
     });
 
     return {

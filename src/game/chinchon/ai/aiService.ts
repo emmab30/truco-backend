@@ -20,6 +20,7 @@ export class ChinchonAIService {
         const ai = new ChinchonAI(difficulty, aiId);
 
         this.aiPlayers.set(aiId, ai);
+        console.log(`✅ AI Service: Registered AI player ${ai.getAIName()} with ID ${aiId}. Total AIs: ${this.aiPlayers.size}`);
 
         const aiPlayer: Player = {
             id: aiId,
@@ -45,6 +46,7 @@ export class ChinchonAIService {
         const ai = this.aiPlayers.get(playerId);
         if (!ai) {
             console.log(`❌ IA not found for player ${playerId}`);
+            console.log(`📋 Registered AI IDs: ${Array.from(this.aiPlayers.keys()).join(', ')}`);
             return game;
         }
 

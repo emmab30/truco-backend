@@ -402,7 +402,6 @@ export class ChinchonAI {
             if (cuttingCard) {
                 // ESTRATEGIA INTELIGENTE: No siempre cortar, evaluar si vale la pena
                 const shouldCut = this.shouldCutStrategically(cuttingCard, uncombinedCards, combinations);
-                
                 if (shouldCut.decision) {
                     console.log(`🤖 IA ${this.playerId} - ✅ DECIDIÓ CORTAR: ${shouldCut.reason}`);
                     return {
@@ -430,7 +429,7 @@ export class ChinchonAI {
     private shouldCutStrategically(cuttingCard: Card, uncombinedCards: Card[], combinations: Combination[]): { decision: boolean; reason: string } {
         const cuttingCardValue = cuttingCard.chinchonValue || 0;
         const totalUncombinedPoints = uncombinedCards.reduce((sum, card) => sum + (card.chinchonValue || 0), 0);
-        
+
         // Calcular puntos SIN la carta de corte (que no se cuenta)
         const pointsExcludingCuttingCard = totalUncombinedPoints - cuttingCardValue;
 
@@ -449,7 +448,7 @@ export class ChinchonAI {
             // 80% probabilidad de cortar según dificultad
             const cutProbability = this.difficulty === "hard" ? 0.85 : this.difficulty === "medium" ? 0.75 : 0.9;
             const shouldCut = Math.random() < cutProbability;
-            
+
             if (shouldCut) {
                 return {
                     decision: true,
@@ -468,7 +467,7 @@ export class ChinchonAI {
             // 60% probabilidad según dificultad
             const cutProbability = this.difficulty === "hard" ? 0.65 : this.difficulty === "medium" ? 0.55 : 0.7;
             const shouldCut = Math.random() < cutProbability;
-            
+
             if (shouldCut) {
                 return {
                     decision: true,
@@ -487,7 +486,7 @@ export class ChinchonAI {
             // 50% probabilidad - es arriesgado
             const cutProbability = this.difficulty === "hard" ? 0.55 : this.difficulty === "medium" ? 0.45 : 0.6;
             const shouldCut = Math.random() < cutProbability;
-            
+
             if (shouldCut) {
                 return {
                     decision: true,
@@ -507,7 +506,7 @@ export class ChinchonAI {
             if (cuttingCardValue <= 2) {
                 const cutProbability = this.difficulty === "hard" ? 0.3 : this.difficulty === "medium" ? 0.35 : 0.4;
                 const shouldCut = Math.random() < cutProbability;
-                
+
                 if (shouldCut) {
                     return {
                         decision: true,
@@ -529,12 +528,12 @@ export class ChinchonAI {
 
         // FACTOR 6: Situación media - evaluar calidad de combinaciones
         const hasLongSequence = combinations.some((c) => c.type === "sequence" && c.cards.length >= 5);
-        
+
         if (hasLongSequence && cuttingCardValue <= 2 && pointsExcludingCuttingCard <= 5) {
             // Tiene una buena escalera formándose, podría esperar
             const cutProbability = this.difficulty === "hard" ? 0.4 : this.difficulty === "medium" ? 0.5 : 0.6;
             const shouldCut = Math.random() < cutProbability;
-            
+
             if (shouldCut) {
                 return {
                     decision: true,
@@ -543,7 +542,7 @@ export class ChinchonAI {
             } else {
                 return {
                     decision: false,
-                    reason: `Escalera larga (${combinations.find(c => c.type === "sequence" && c.cards.length >= 5)?.cards.length}), esperar 7 cartas`,
+                    reason: `Escalera larga (${combinations.find((c) => c.type === "sequence" && c.cards.length >= 5)?.cards.length}), esperar 7 cartas`,
                 };
             }
         }
@@ -551,11 +550,11 @@ export class ChinchonAI {
         // DEFAULT: Evaluar según dificultad
         // IA difícil es más conservadora, IA fácil más agresiva
         const baseProbability = this.difficulty === "hard" ? 0.35 : this.difficulty === "medium" ? 0.5 : 0.65;
-        
+
         // Ajustar según puntos
-        const adjustedProbability = baseProbability - (pointsExcludingCuttingCard * 0.05) + ((4 - cuttingCardValue) * 0.1);
+        const adjustedProbability = baseProbability - pointsExcludingCuttingCard * 0.05 + (4 - cuttingCardValue) * 0.1;
         const shouldCut = Math.random() < Math.max(0.1, Math.min(0.9, adjustedProbability));
-        
+
         if (shouldCut) {
             return {
                 decision: true,
@@ -788,16 +787,31 @@ export class ChinchonAI {
 
     /**
      * Obtiene el nombre del bot basado en la dificultad
+     * Usa el ID completo para generar un índice único y evitar duplicados
      */
     getAIName(): string {
         const names = {
-            easy: ["Bot Fácil", "IA Principiante", "Bot Simple"],
-            medium: ["Bot Medio", "IA Intermedia", "Bot Inteligente"],
-            hard: ["Bot Difícil", "IA Experta", "Bot Maestro"],
+            easy: ["Bot Fácil", "IA Principiante", "Bot Simple", "Novato", "Aprendiz", "Bot Junior"],
+            medium: ["Bot Medio", "IA Intermedia", "Bot Inteligente", "Estratega", "Competidor", "Bot Pro"],
+            hard: ["Rey Chinchón", "Bot Chinchón", "Chinchón Supremo", "Bot Chinchón Supremo", "Bot Chinchón Maestro", "Bot Chinchón Experto"],
         };
 
         const nameList = names[this.difficulty];
-        return nameList[Math.floor(Math.random() * nameList.length)]!;
+        
+        // Usar el sufijo aleatorio del playerId para mayor entropía
+        // Formato del playerId: ia_<timestamp>_<sufijo_aleatorio>
+        const parts = this.playerId.split("_");
+        const randomSuffix = parts[2] || "default";
+        
+        // Convertir el sufijo a un número usando la suma de los códigos de caracteres
+        let hash = 0;
+        for (let i = 0; i < randomSuffix.length; i++) {
+            hash = ((hash << 5) - hash) + randomSuffix.charCodeAt(i);
+            hash = hash & hash; // Convert to 32bit integer
+        }
+        
+        const index = Math.abs(hash) % nameList.length;
+        return nameList[index]!;
     }
 
     /**
