@@ -24,13 +24,13 @@ export class ChinchonGameService extends BaseGameService {
     /**
      * Add a player to a game
      */
-    addPlayerToGame(gameId: string, playerId: string, playerName: string, team: Team): Game {
+    addPlayerToGame(gameId: string, playerId: string, playerName: string, team: Team, photo?: string): Game {
         const game = this.getGame(gameId);
         if (!game) {
             throw new Error("Game not found");
         }
 
-        const updatedGame = addPlayer(game, playerId, playerName, team);
+        const updatedGame = addPlayer(game, playerId, playerName, team, photo);
         this.updateGame(updatedGame);
         return updatedGame;
     }

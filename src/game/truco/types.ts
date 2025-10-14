@@ -26,6 +26,7 @@ export interface Player {
     hasPlayedCard: boolean;
     wentToMazo: boolean;
     availableActions?: Action[];
+    photo?: string;
 }
 
 export interface PlayedCard {

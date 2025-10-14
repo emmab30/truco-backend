@@ -24,6 +24,7 @@ export interface Player {
     totalScore: number; // Accumulated score across rounds
     isEliminated: boolean;
     availableActions?: any[];
+    photo?: string;
 }
 
 export interface PlayedCard {

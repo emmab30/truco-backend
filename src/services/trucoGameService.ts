@@ -46,15 +46,16 @@ export class TrucoGameService extends BaseGameService {
    * @param playerId - Player ID
    * @param playerName - Player name
    * @param team - Team number
+   * @param photo - Player photo URL (optional)
    * @returns Updated game object
    */
-  addPlayerToGame(gameId: string, playerId: string, playerName: string, team: Team = Team.TEAM_1): Game {
+  addPlayerToGame(gameId: string, playerId: string, playerName: string, team: Team = Team.TEAM_1, photo?: string): Game {
     const game = this.getGame(gameId);
     if (!game) {
       throw new Error('Game not found');
     }
 
-    const updatedGame = addPlayer(game, playerId, playerName, team);
+    const updatedGame = addPlayer(game, playerId, playerName, team, photo);
     this.updateGame(updatedGame);
     return updatedGame;
   }

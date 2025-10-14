@@ -156,9 +156,10 @@ export function createGame(maxScore: number = 15): Game {
  * @param playerId - Player ID
  * @param playerName - Player name
  * @param team - Team number (0 or 1)
+ * @param photo - Player photo URL (optional)
  * @returns Updated game object
  */
-export function addPlayer(game: Game, playerId: string, playerName: string, team: Team = Team.TEAM_1): Game {
+export function addPlayer(game: Game, playerId: string, playerName: string, team: Team = Team.TEAM_1, photo?: string): Game {
     const newPlayer: Player = {
         id: playerId,
         name: playerName,
@@ -173,6 +174,7 @@ export function addPlayer(game: Game, playerId: string, playerName: string, team
         envidoScore: 0,
         hasPlayedCard: false,
         wentToMazo: false,
+        ...(photo && { photo }),
     };
 
     return {

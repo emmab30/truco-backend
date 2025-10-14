@@ -44,9 +44,10 @@ export class RoomService {
      * @param gameType - Type of game ('truco', 'chinchon', etc.)
      * @param hasAI - Whether to include AI player
      * @param aiDifficulty - AI difficulty level
+     * @param playerPhoto - Player photo URL
      * @returns Created room
      */
-    createRoom(roomName: string, playerName: string, playerId: string, maxPlayers: number = 2, isPrivate: boolean = false, password?: string, maxScore?: number, gameType: string = GameType.TRUCO, hasAI: boolean = false, aiDifficulty: AIDifficulty = 'medium'): Room {
+    createRoom(roomName: string, playerName: string, playerId: string, maxPlayers: number = 2, isPrivate: boolean = false, password?: string, maxScore?: number, gameType: string = GameType.TRUCO, hasAI: boolean = false, aiDifficulty: AIDifficulty = 'medium', playerPhoto?: string | null): Room {
         // Validate game type
         if (!isValidGameType(gameType)) {
             throw new Error(`Invalid game type: ${gameType}`);
@@ -71,7 +72,7 @@ export class RoomService {
         const formattedPlayerName = formatPlayerName(playerName);
 
         // Add the creator as the first player
-        let updatedGame = gameService.addPlayerToGame(game.id, playerId, formattedPlayerName, Team.TEAM_1);
+        let updatedGame = gameService.addPlayerToGame(game.id, playerId, formattedPlayerName, Team.TEAM_1, playerPhoto || undefined);
 
         // NOTE: AI players are now added in websocketService.ts after room creation
         // This ensures all AI players use the same aiService instance as the handler
@@ -107,9 +108,10 @@ export class RoomService {
      * @param playerName - Player name
      * @param playerId - Player ID
      * @param password - Password for private rooms
+     * @param playerPhoto - Player photo URL
      * @returns Room or null if failed
      */
-    joinRoom(roomId: string, playerName: string, playerId: string, password?: string): Room | null {
+    joinRoom(roomId: string, playerName: string, playerId: string, password?: string, playerPhoto?: string | null): Room | null {
         const room = this.rooms.get(roomId);
         if (!room || room.game.players.length >= room.maxPlayers) {
             return null;
@@ -126,7 +128,7 @@ export class RoomService {
         // Add player to game
         const team = room.game.players.length % 2;
         const gameService = this.getGameService(room.gameType);
-        const updatedGame = gameService.addPlayerToGame(room.game.id, playerId, formattedPlayerName, team);
+        const updatedGame = gameService.addPlayerToGame(room.game.id, playerId, formattedPlayerName, team, playerPhoto || undefined);
 
         room.game = updatedGame;
         this.playerRooms.set(playerId, roomId);
@@ -139,9 +141,11 @@ export class RoomService {
      * @param roomId - Room ID
      * @param playerId - Player ID
      * @param password - Optional password for private rooms
+     * @param playerName - Player name
+     * @param playerPhoto - Player photo URL
      * @returns Room if successful, null otherwise
      */
-    joinRoomById(roomId: string, playerId: string, password?: string): Room | null {
+    joinRoomById(roomId: string, playerId: string, password?: string, playerName?: string, playerPhoto?: string | null): Room | null {
         const room = this.rooms.get(roomId);
         if (!room) {
             return null;
@@ -155,8 +159,15 @@ export class RoomService {
         // Check if player is already in this room
         const existingPlayer = room.game.players.find((p: any) => p.id === playerId);
         if (existingPlayer) {
-            // Player is already in the room, just update mapping
+            // Player is already in the room, just update mapping and photo if needed
             this.playerRooms.set(playerId, roomId);
+            // Update photo if provided and different
+            if (playerPhoto && existingPlayer.photo !== playerPhoto) {
+                existingPlayer.photo = playerPhoto;
+                // Update the game with the modified player
+                const gameService = this.getGameService(room.gameType);
+                gameService.updateGame(room.game);
+            }
             console.log(`🔄 Player reconnected to room: ${roomId}`);
             return room;
         }
@@ -172,10 +183,10 @@ export class RoomService {
         }
 
         // Add player to the room
-        const playerName = `Player-${playerId.slice(-6)}`; // Generate a name from player ID
+        const finalPlayerName = playerName ? formatPlayerName(playerName) : `Player-${playerId.slice(-6)}`;
         const team = room.game.players.length % 2;
         const gameService = this.getGameService(room.gameType);
-        const updatedGame = gameService.addPlayerToGame(room.game.id, playerId, playerName, team);
+        const updatedGame = gameService.addPlayerToGame(room.game.id, playerId, finalPlayerName, team, playerPhoto || undefined);
 
         room.game = updatedGame;
         this.playerRooms.set(playerId, roomId);

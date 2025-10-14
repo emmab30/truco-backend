@@ -26,7 +26,7 @@ export function createGame(maxScore: number = 100): Game {
     };
 }
 
-export function addPlayer(game: Game, playerId: string, playerName: string, team: Team): Game {
+export function addPlayer(game: Game, playerId: string, playerName: string, team: Team, photo?: string): Game {
     const existingPlayer = game.players.find((p) => p.id === playerId);
     if (existingPlayer) {
         return game; // Player already exists
@@ -44,6 +44,7 @@ export function addPlayer(game: Game, playerId: string, playerName: string, team
         totalScore: 0,
         isEliminated: false,
         availableActions: [],
+        ...(photo && { photo }),
     };
 
     return {

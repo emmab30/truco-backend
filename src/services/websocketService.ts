@@ -273,10 +273,12 @@ export class WebSocketService {
             gameType = GameType.TRUCO,
             hasAI = false,
             aiDifficulty = "medium",
+            playerPhoto,
         } = data;
 
         try {
-            const room = this.roomService.createRoom(roomName, playerName, playerId, maxPlayers, isPrivate, password, maxScore, gameType, hasAI, aiDifficulty);
+            console.log(`🔵 Creating room - Player: ${playerName} (${playerId}), Photo: ${playerPhoto || 'none'}`);
+            const room = this.roomService.createRoom(roomName, playerName, playerId, maxPlayers, isPrivate, password, maxScore, gameType, hasAI, aiDifficulty, playerPhoto);
 
             // Store player connection
             this.playerConnections.set(playerId, ws);
@@ -370,10 +372,11 @@ export class WebSocketService {
             return;
         }
 
-        const { playerName, playerId, password } = data;
+        const { playerName, playerId, password, playerPhoto } = data;
 
         try {
-            const room = this.roomService.joinRoom(roomId, playerName, playerId, password);
+            console.log(`🔵 Joining room - Player: ${playerName} (${playerId}), Photo: ${playerPhoto || 'none'}`);
+            const room = this.roomService.joinRoom(roomId, playerName, playerId, password, playerPhoto);
             if (!room) {
                 this.sendError(ws, "Error joining room (room full, not found, or incorrect password)");
                 return;
@@ -383,15 +386,14 @@ export class WebSocketService {
             this.playerConnections.set(playerId, ws);
             this.roomService.addConnection(roomId, playerId, ws);
 
-            // Get the formatted player name from the game (already formatted for privacy)
+            // Get the player from the game (already has photo and formatted name)
             const joinedPlayer = room.game.players.find((p: any) => p.id === playerId);
-            const formattedPlayerName = joinedPlayer?.name || playerName;
 
             // Notify all players in room
             this.broadcastToRoom(roomId, {
                 type: WEBSOCKET_MESSAGE_TYPES.PLAYER_JOINED,
                 data: {
-                    player: { id: playerId, name: formattedPlayerName },
+                    player: joinedPlayer,
                     game: this.getGameService(room.gameType).getGameWithActions(room.game.id),
                 },
             });
@@ -466,13 +468,13 @@ export class WebSocketService {
         }
 
         try {
-            const { password } = data;
+            const { password, playerName, playerPhoto } = data;
 
             // Check if player is already in the room before joining
             const existingRoom = this.roomService.getRoom(roomId);
             const wasAlreadyInRoom = existingRoom?.game?.players?.some((p: any) => p.id === playerId) || false;
 
-            const room = this.roomService.joinRoomById(roomId, playerId, password);
+            const room = this.roomService.joinRoomById(roomId, playerId, password, playerName, playerPhoto);
             if (!room) {
                 this.sendError(ws, "Sala no encontrada, room is full, or invalid password");
                 return;
@@ -485,10 +487,14 @@ export class WebSocketService {
             // Notify all players in room about the new player (if it's a new player)
             if (!wasAlreadyInRoom && room.game) {
                 // This is a new player joining via direct link
+                const joinedPlayer = room.game.players.find((p: any) => p.id === playerId);
+                
+                console.log(`🔵 Player joining room via deep link - ID: ${playerId}, Name: ${joinedPlayer?.name}, Photo: ${joinedPlayer?.photo || 'none'}`);
+                
                 this.broadcastToRoom(roomId, {
                     type: WEBSOCKET_MESSAGE_TYPES.PLAYER_JOINED,
                     data: {
-                        player: { id: playerId, name: `Player-${playerId.slice(-6)}` },
+                        player: joinedPlayer,
                         game: this.getGameService(room.gameType).getGameWithActions(room.game.id),
                     },
                 });
