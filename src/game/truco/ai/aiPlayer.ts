@@ -3,7 +3,7 @@
 // Sistema de inteligencia artificial para el juego de Truco
 // ============================================================================
 
-import { Game, Card, Player, EnvidoCall, TrucoCall } from "@/game/truco/types";
+import { Game, Card, Player, EnvidoCall, TrucoCall } from "@/shared/types/truco";
 import { POINTS } from "@/game/truco/constants";
 
 export type AIDifficulty = "hard";

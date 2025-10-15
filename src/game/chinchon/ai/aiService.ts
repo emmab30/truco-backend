@@ -3,7 +3,7 @@
 // Service to handle the actions of the AI in the Chinchón game
 // ============================================================================
 
-import { Game, Player } from "@/game/chinchon/types";
+import { Game, Player } from "@/shared/types/chinchon";
 import { ChinchonAI, AIAction } from "./aiPlayer";
 import { drawCard, discardCard, cutWithCard, closeRound } from "@/game/chinchon/logic/gameLogic";
 

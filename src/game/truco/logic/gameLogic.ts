@@ -3,7 +3,7 @@
 // Core game logic for the Truco card game
 // ============================================================================
 
-import { Game, Player, Hand, Round, Card, Team, GamePhase, EnvidoCall, TrucoCall, EnvidoResponse, TrucoResponse } from "@/game/truco/types";
+import { Game, Player, Hand, Round, Card, Team, GamePhase, EnvidoCall, TrucoCall, EnvidoResponse, TrucoResponse } from "@/shared/types/truco";
 import { POINTS, TRUCO_GAME_CONFIG } from "@/game/truco/constants";
 import { createCardFromString, createShuffledDeck, getHandWinnerName, determineRoundWinner, determineHandWinner } from "@/game/truco/utils";
 import { generateId } from "@/shared/utils/common";

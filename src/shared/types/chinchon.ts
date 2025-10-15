@@ -2,8 +2,6 @@
 // CHINCHÓN-SPECIFIC TYPES
 // ============================================================================
 
-// Team enum is defined locally for Chinchón
-
 export interface Card {
     id: string;
     suit: Suit;
@@ -156,7 +154,7 @@ export interface GameConfig {
 }
 
 // ============================================================================
-// CHINCHÓN API REQUEST TYPES
+// CHINCHÓN API TYPES
 // ============================================================================
 
 export interface DrawCardRequest {
@@ -212,3 +210,27 @@ export interface TeamWins {
     team2: number;
     pardas: number;
 }
+
+// ============================================================================
+// CHINCHÓN-SPECIFIC WEBSOCKET EVENT TYPES
+// ============================================================================
+
+export interface ChinchonWebSocketEvents {
+    // Client to Server - Chinchón-specific
+    START_GAME: {};
+    DRAW_CARD: DrawCardRequest;
+    DISCARD_CARD: DiscardCardRequest;
+    CLOSE_ROUND: {};
+    CUT_WITH_CARD: { cardId: string };
+    SHOW_COMBINATIONS: ShowCombinationsRequest;
+    START_NEXT_ROUND: {};
+
+    // Server to Client - Chinchón-specific
+    GAME_STARTED: { room: RoomResponse; game: GameResponse };
+    CARD_DRAWN: { playerId: string; fromDiscardPile: boolean; game: GameResponse };
+    CARD_DISCARDED: { playerId: string; cardId: string; game: GameResponse };
+    ROUND_CLOSED: { winnerId: string; scores: Map<string, number>; game: GameResponse };
+    COMBINATIONS_SHOWN: { playerId: string; combinations: Combination[]; game: GameResponse };
+    GAME_UPDATE: { game: GameResponse };
+}
+

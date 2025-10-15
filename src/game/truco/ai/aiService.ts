@@ -3,7 +3,7 @@
 // Service to handle the actions of the AI in the Truco game
 // ============================================================================
 
-import { Game, Player, EnvidoResponse, TrucoResponse } from "@/game/truco/types";
+import { Game, Player, EnvidoResponse, TrucoResponse } from "@/shared/types/truco";
 import { TrucoAI, AIAction } from "./aiPlayer";
 import { playCard, callEnvido, respondEnvido, callTruco, respondTruco, goToMazo } from "@/game/truco/logic/gameLogic";
 

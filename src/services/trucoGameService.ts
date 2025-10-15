@@ -1,11 +1,4 @@
 import {
-  Game,
-  Team,
-  GameResponse,
-  EnvidoCall,
-  TrucoCall,
-  EnvidoResponse,
-  TrucoResponse,
   addPlayer,
   startGame,
   dealNewHand,
@@ -18,6 +11,15 @@ import {
   goToMazo,
   getAvailableActions
 } from '@/game/truco';
+import {
+    Game,
+  Team,
+  GameResponse,
+  EnvidoCall,
+  TrucoCall,
+  EnvidoResponse,
+  TrucoResponse,
+} from '@/shared/types/truco';
 import { GameType } from '@/shared/constants';
 import { BaseGameService } from './baseGameService';
 import { TrucoAIService } from '@/game/truco/ai/aiService';

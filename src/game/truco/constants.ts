@@ -3,7 +3,7 @@
 // Constantes específicas del juego de Truco
 // ============================================================================
 
-import { Suit, EnvidoCall, TrucoCall, ActionType, GameConfig } from "@/game/truco/types";
+import { Suit, EnvidoCall, TrucoCall, ActionType, GameConfig } from "@/shared/types/truco";
 
 // ============================================================================
 // CARD VALUES - TRUCO

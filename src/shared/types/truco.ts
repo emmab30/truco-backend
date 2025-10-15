@@ -253,15 +253,11 @@ export interface TeamWins {
 }
 
 // ============================================================================
-// TRUCO WEBSOCKET EVENT TYPES
+// TRUCO-SPECIFIC WEBSOCKET EVENT TYPES
 // ============================================================================
 
-export interface WebSocketEvents {
-    // Client to Server
-    REGISTER_PLAYER: { playerId: string };
-    CREATE_ROOM: any; // Will be imported from generic types
-    JOIN_ROOM: any; // Will be imported from generic types
-    LEAVE_ROOM: {};
+export interface TrucoWebSocketEvents {
+    // Client to Server - Truco-specific
     START_GAME: {};
     DEAL_NEW_HAND: {};
     PLAY_CARD: PlayCardRequest;
@@ -270,14 +266,8 @@ export interface WebSocketEvents {
     CALL_TRUCO: CallTrucoRequest;
     RESPOND_TRUCO: RespondTrucoRequest;
     GO_TO_MAZO: {};
-    GET_ROOMS: {};
 
-    // Server to Client
-    PLAYER_REGISTERED: { playerId: string };
-    ROOM_CREATED: { room: RoomResponse; game: GameResponse };
-    ROOM_JOINED: { room: RoomResponse; game: GameResponse };
-    PLAYER_JOINED: { player: Player; game: GameResponse };
-    PLAYER_LEFT: { playerId: string; game: GameResponse };
+    // Server to Client - Truco-specific
     GAME_STARTED: { room: RoomResponse; game: GameResponse };
     CARD_PLAYED: { playerId: string; cardId: string; game: GameResponse };
     ENVIDO_CALLED: { playerId: string; call: EnvidoCall; game: GameResponse };
@@ -288,6 +278,5 @@ export interface WebSocketEvents {
     HAND_END: { winner: { name: string; team: Team; points: number }; game: GameResponse };
     NEW_HAND_DEALT: { game: GameResponse };
     NEW_ROUND_DEALT: { game: GameResponse };
-    ROOM_LIST_UPDATED: { rooms: RoomResponse[] };
-    ERROR: { message: string };
 }
+

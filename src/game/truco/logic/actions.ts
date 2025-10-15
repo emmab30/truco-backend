@@ -3,7 +3,7 @@
 // Available actions logic for Truco game
 // ============================================================================
 
-import { Game, Action, GamePhase, ActionType, EnvidoCall, TrucoCall, TrucoResponse } from "@/game/truco/types";
+import { Game, Action, GamePhase, ActionType, EnvidoCall, TrucoCall, TrucoResponse } from "@/shared/types/truco";
 import { ACTION_PRIORITIES } from "@/game/truco/constants";
 
 /**

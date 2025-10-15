@@ -4,13 +4,4 @@
 // ============================================================================
 
 // Re-export from new shared types location
-export {
-    WebSocketMessage,
-    Room,
-    GameHistory,
-    ServerConfig,
-    CreateRoomRequest,
-    JoinRoomRequest,
-    ApiResponse,
-    WebSocketEvents
-} from "@/shared/types";
+export { WebSocketMessage, Room, GameHistory, ServerConfig, CreateRoomRequest, JoinRoomRequest, WebSocketEvents } from "@/shared/types";

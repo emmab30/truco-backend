@@ -3,7 +3,7 @@
 // Funciones utilitarias específicas del juego de Truco
 // ============================================================================
 
-import { Card, CardString, Player, Round, PlayedCard, TeamString, RoundWins, TeamWins } from "@/game/truco/types";
+import { Card, CardString, Player, Round, PlayedCard, TeamString, RoundWins, TeamWins } from "@/shared/types/truco";
 import { TRUCO_VALUES, ENVIDO_VALUES } from "@/game/truco/constants";
 import { DISPLAY_VALUES } from "@/game/shared/constants";
 import { generateId } from "@/shared/utils/common";

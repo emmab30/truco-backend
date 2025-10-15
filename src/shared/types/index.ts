@@ -3,12 +3,8 @@
 // Tipos compartidos entre diferentes partes de la aplicación
 // ============================================================================
 
-export interface WebSocketMessage {
-    type: string;
-    data?: any;
-    roomId?: string;
-    playerId?: string;
-}
+import { GameType } from '@/constants/gameTypes';
+export { GameType };
 
 export interface Room {
     id: string;
@@ -21,7 +17,7 @@ export interface Room {
     isPrivate: boolean;
     password?: string;
     maxScore: number;
-    gameType: string;
+    gameType: GameType;
     hasAI?: boolean;
     aiDifficulty?: 'easy' | 'medium' | 'hard';
 }
@@ -56,7 +52,7 @@ export interface CreateRoomRequest {
     isPrivate?: boolean;
     password?: string;
     maxScore?: number;
-    gameType?: string;
+    gameType?: GameType;
     hasAI?: boolean;
     aiDifficulty?: 'easy' | 'medium' | 'hard';
 }
@@ -67,17 +63,16 @@ export interface JoinRoomRequest {
     password?: string;
 }
 
-export interface ApiResponse<T = any> {
-    success: boolean;
-    data?: T;
-    error?: string;
-    message?: string;
-}
-
 // ============================================================================
 // WEBSOCKET EVENT TYPES
 // ============================================================================
 
+export interface WebSocketMessage {
+    type: string;
+    data?: any;
+    roomId?: string;
+    playerId?: string;
+}
 export interface WebSocketEvents {
     // Generic room events
     REGISTER_PLAYER: { playerId: string };
@@ -99,3 +94,9 @@ export interface WebSocketEvents {
     [key: string]: any;
 }
 
+// ============================================================================
+// GAME-SPECIFIC TYPE EXPORTS
+// ============================================================================
+
+export * as TrucoTypes from './truco';
+export * as ChinchonTypes from './chinchon';

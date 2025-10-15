@@ -1,4 +1,4 @@
-import { Game } from "@/game/truco/types";
+import { Game } from "@/shared/types/truco";
 import { createGame as createTrucoGame } from "./truco";
 import { GameType } from "@/shared/constants";
 

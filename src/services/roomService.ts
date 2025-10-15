@@ -1,5 +1,5 @@
 import { Room } from "@/shared/types";
-import { RoomResponse, Team } from "@/game/truco/types";
+import { RoomResponse, Team } from "@/shared/types/truco";
 import { TrucoGameService } from "@/services/trucoGameService";
 import { ChinchonGameService } from "@/services/chinchonGameService";
 import { generateId, formatPlayerName } from "@/shared/utils/common";

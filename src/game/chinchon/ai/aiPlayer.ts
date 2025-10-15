@@ -3,7 +3,7 @@
 // Sistema de inteligencia artificial para el juego de Chinchón
 // ============================================================================
 
-import { Game, Card, Combination, ChinchonState, ActionType } from "@/game/chinchon/types";
+import { Game, Card, Combination, ChinchonState, ActionType } from "@/shared/types/chinchon";
 import { findCombinations } from "@/game/chinchon/logic/gameLogic";
 
 export type AIDifficulty = "easy" | "medium" | "hard";

@@ -4,7 +4,7 @@
 // ============================================================================
 
 import { findCombinations } from '../logic/gameLogic';
-import { Card, Suit } from '../types';
+import { Card, Suit } from '@/shared/types/chinchon';
 import { CHINCHON_VALUES } from '../constants';
 
 // ============================================================================

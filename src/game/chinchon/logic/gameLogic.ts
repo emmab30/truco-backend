@@ -1,4 +1,4 @@
-import { Game, Player, Hand, Card, Team, GamePhase, ActionType, Combination, Suit, ChinchonState } from "@/game/chinchon/types";
+import { Game, Player, Hand, Card, Team, GamePhase, ActionType, Combination, Suit, ChinchonState } from "@/shared/types/chinchon";
 import { CHINCHON_CONFIG, CHINCHON_VALUES, VALUES_CHINCHON } from "@/game/chinchon/constants";
 import { generateId } from "@/shared/utils/common";
 import { generateStableCombinationId } from "@/game/chinchon/utils";
