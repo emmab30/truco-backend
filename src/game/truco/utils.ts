@@ -7,6 +7,7 @@ import { Card, CardString, Player, Round, PlayedCard, TeamString, RoundWins, Tea
 import { TRUCO_VALUES, ENVIDO_VALUES } from "@/game/truco/constants";
 import { DISPLAY_VALUES } from "@/game/shared/constants";
 import { generateId } from "@/shared/utils/common";
+import { CardValue } from "@/shared/types";
 
 /**
  * Create a card from a card string (e.g., "1-espadas")
@@ -20,7 +21,7 @@ export function createCardFromString(cardString: CardString): Card {
     return {
         id: generateId(),
         suit: suit as any,
-        value: value,
+        value: value as CardValue,
         displayValue: DISPLAY_VALUES[valueStr] || valueStr,
         trucoValue: TRUCO_VALUES[cardString] || 0,
         envidoValue: ENVIDO_VALUES[valueStr] || 0,

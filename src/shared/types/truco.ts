@@ -2,32 +2,33 @@
 // TRUCO-SPECIFIC TYPES
 // ============================================================================
 
-export interface Card {
-    id: string;
-    suit: Suit;
-    value: number;
+import { BaseCard, BaseGame, BasePlayer } from './index';
+
+// ============================================================================
+// TRUCO CARD & PLAYER EXTENSIONS
+// ============================================================================
+
+export interface Card extends BaseCard {
     displayValue: string;
     trucoValue: number;
     envidoValue: number;
 }
 
-export interface Player {
-    id: string;
-    name: string;
-    team: Team;
+export interface TrucoPlayer extends BasePlayer {
     position: number;
     cards: Card[];
     isDealer: boolean;
     isMano: boolean;
     isActive: boolean;
     score: number;
-    points: number;
     envidoScore: number;
     hasPlayedCard: boolean;
     wentToMazo: boolean;
     availableActions?: Action[];
-    photo?: string;
 }
+
+// Legacy alias for backwards compatibility
+export type Player = TrucoPlayer;
 
 export interface PlayedCard {
     card: Card;
@@ -80,10 +81,33 @@ export interface Hand {
     playerOriginalCards: Map<string, Card[]>; // Cartas originales de cada jugador para calcular envido
 }
 
+// ============================================================================
+// TRUCO GAME METADATA
+// ============================================================================
+
+export interface TrucoMetadata {
+    phase: GamePhase;
+    players: TrucoPlayer[];
+    currentHand: Hand | null;
+    gameConfig: GameConfig;
+    teamScores: [number, number];
+    winner: Team | null;
+    history: GameHistory[];
+}
+
+// ============================================================================
+// TRUCO GAME (extends BaseGame)
+// ============================================================================
+
+export interface TrucoGame extends BaseGame<TrucoMetadata> {
+    // BaseGame provides: id, players (BasePlayer[]), maxScore, maxPlayers, metadata
+}
+
+// Legacy interface for backwards compatibility in game logic
 export interface Game {
     id: string;
     phase: GamePhase;
-    players: Player[];
+    players: TrucoPlayer[];
     currentHand: Hand | null;
     gameConfig: GameConfig;
     teamScores: [number, number];
@@ -211,11 +235,12 @@ export interface RespondTrucoRequest {
 // TRUCO RESPONSE TYPES
 // ============================================================================
 
+// Legacy - deprecated, use Room from shared types instead
 export interface RoomResponse {
     id: string;
     name: string;
     maxPlayers: number;
-    players: Player[];
+    players: TrucoPlayer[];
     isActive: boolean;
     createdAt: Date;
     game: Game;
@@ -224,10 +249,11 @@ export interface RoomResponse {
     gameType: string;
 }
 
+// Legacy - deprecated, use TrucoGame instead
 export interface GameResponse {
     id: string;
     phase: GamePhase;
-    players: Player[];
+    players: TrucoPlayer[];
     currentHand: Hand | null;
     teamScores: [number, number];
     winner: Team | null;
@@ -268,15 +294,18 @@ export interface TrucoWebSocketEvents {
     GO_TO_MAZO: {};
 
     // Server to Client - Truco-specific
-    GAME_STARTED: { room: RoomResponse; game: GameResponse };
-    CARD_PLAYED: { playerId: string; cardId: string; game: GameResponse };
-    ENVIDO_CALLED: { playerId: string; call: EnvidoCall; game: GameResponse };
-    ENVIDO_RESPONDED: { playerId: string; response: EnvidoResponse; game: GameResponse };
-    TRUCO_CALLED: { playerId: string; call: TrucoCall; game: GameResponse };
-    TRUCO_RESPONDED: { playerId: string; response: TrucoResponse; game: GameResponse };
-    WENT_TO_MAZO: { playerId: string; game: GameResponse };
-    HAND_END: { winner: { name: string; team: Team; points: number }; game: GameResponse };
-    NEW_HAND_DEALT: { game: GameResponse };
-    NEW_ROUND_DEALT: { game: GameResponse };
+    // Note: Room events use base Room type from shared/types
+    // Game updates use GAME_UPDATE from shared/types with TrucoGame
+    GAME_STARTED: {};
+    CARD_PLAYED: { playerId: string; cardId: string };
+    ENVIDO_CALLED: { playerId: string; call: EnvidoCall };
+    ENVIDO_RESPONDED: { playerId: string; response: EnvidoResponse };
+    TRUCO_CALLED: { playerId: string; call: TrucoCall };
+    TRUCO_RESPONDED: { playerId: string; response: TrucoResponse };
+    WENT_TO_MAZO: { playerId: string };
+    HAND_END: { winner: { name: string; team: Team; points: number } };
+    NEW_HAND_DEALT: {};
+    NEW_ROUND_DEALT: {};
+    SPEECH_BUBBLE: { playerId: string; message: string };
 }
 

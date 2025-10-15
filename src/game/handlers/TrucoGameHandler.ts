@@ -109,7 +109,7 @@ export class TrucoGameHandler extends AbstractGameHandler {
                 type: WEBSOCKET_MESSAGE_TYPES.GAME_STARTED,
                 data: {
                     room: this.roomToResponse(room),
-                    game: this.trucoGameService.getGameWithActions(startedGame.id),
+                    game: this.trucoGameService.getGameUpdate(startedGame.id),
                 },
             });
 
@@ -130,7 +130,7 @@ export class TrucoGameHandler extends AbstractGameHandler {
 
             this.wsService.broadcastToRoom(roomId, {
                 type: WEBSOCKET_MESSAGE_TYPES.NEW_HAND_DEALT,
-                data: { game: this.trucoGameService.getGameWithActions(newHandGame.id) },
+                data: { game: this.trucoGameService.getGameUpdate(newHandGame.id) },
             });
         } catch (error) {
             console.error("Error dealing new hand:", error);
@@ -155,7 +155,7 @@ export class TrucoGameHandler extends AbstractGameHandler {
                 data: {
                     playerId,
                     cardId: data.cardId,
-                    game: this.trucoGameService.getGameWithActions(updatedGame.id),
+                    game: this.trucoGameService.getGameUpdate(updatedGame.id),
                 },
             });
 
@@ -198,7 +198,7 @@ export class TrucoGameHandler extends AbstractGameHandler {
                 data: {
                     playerId,
                     call: data.call,
-                    game: this.trucoGameService.getGameWithActions(updatedGame.id),
+                    game: this.trucoGameService.getGameUpdate(updatedGame.id),
                 },
             });
 
@@ -276,7 +276,7 @@ export class TrucoGameHandler extends AbstractGameHandler {
                 data: {
                     playerId,
                     response: data.response,
-                    game: this.trucoGameService.getGameWithActions(updatedGame.id),
+                    game: this.trucoGameService.getGameUpdate(updatedGame.id),
                 },
             });
 
@@ -316,7 +316,7 @@ export class TrucoGameHandler extends AbstractGameHandler {
                 data: {
                     playerId,
                     call: data.call,
-                    game: this.trucoGameService.getGameWithActions(updatedGame.id),
+                    game: this.trucoGameService.getGameUpdate(updatedGame.id),
                 },
             });
 
@@ -357,7 +357,7 @@ export class TrucoGameHandler extends AbstractGameHandler {
                 data: {
                     playerId,
                     response: data.response,
-                    game: this.trucoGameService.getGameWithActions(updatedGame.id),
+                    game: this.trucoGameService.getGameUpdate(updatedGame.id),
                 },
             });
 
@@ -389,7 +389,7 @@ export class TrucoGameHandler extends AbstractGameHandler {
                 type: WEBSOCKET_MESSAGE_TYPES.WENT_TO_MAZO,
                 data: {
                     playerId,
-                    game: this.trucoGameService.getGameWithActions(updatedGame.id),
+                    game: this.trucoGameService.getGameUpdate(updatedGame.id),
                 },
             });
 
@@ -418,7 +418,7 @@ export class TrucoGameHandler extends AbstractGameHandler {
                             team: winnerPlayer.team,
                             points: game.currentHand?.points || 0,
                         },
-                        game: this.trucoGameService.getGameWithActions(game.id),
+                        game: this.trucoGameService.getGameUpdate(game.id),
                     },
                 });
             }
@@ -434,7 +434,7 @@ export class TrucoGameHandler extends AbstractGameHandler {
 
                     this.wsService.broadcastToRoom(roomId, {
                         type: WEBSOCKET_MESSAGE_TYPES.NEW_HAND_DEALT,
-                        data: { game: this.trucoGameService.getGameWithActions(newHandGame.id) },
+                        data: { game: this.trucoGameService.getGameUpdate(newHandGame.id) },
                     });
 
                     // Check if AI should start the new hand
@@ -678,14 +678,11 @@ export class TrucoGameHandler extends AbstractGameHandler {
                 }
             }
 
-            // Get fresh game state with actions
-            const gameResponse = this.trucoGameService.getGameWithActions(room.game.id);
-
             // Broadcast the updated game state
             this.wsService.broadcastToRoom(roomId, {
                 type: WEBSOCKET_MESSAGE_TYPES.GAME_UPDATE,
                 data: {
-                    game: gameResponse,
+                    game: this.trucoGameService.getGameUpdate(room.game.id),
                 },
             });
 

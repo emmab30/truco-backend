@@ -90,11 +90,10 @@ export class ChinchonGameHandler extends AbstractGameHandler {
             }
 
             this.chinchonGameService.startGame(room.game.id);
-            const gameResponse = this.chinchonGameService.getGameWithActions(room.game.id);
 
             this.wsService.broadcastToRoom(roomId, {
                 type: WEBSOCKET_MESSAGE_TYPES.GAME_STARTED,
-                data: { room, game: gameResponse },
+                data: { room, game: this.chinchonGameService.getGameUpdate(room.game.id) },
             });
 
             this.sendSpeechBubble(roomId, playerId, "¡El juego ha comenzado!", "Sistema", 1);
@@ -123,14 +122,12 @@ export class ChinchonGameHandler extends AbstractGameHandler {
 
             // Only send success message if the action was actually successful
             if (result) {
-                const gameResponse = this.chinchonGameService.getGameWithActions(room.game.id);
-
                 this.wsService.broadcastToRoom(roomId, {
                     type: WEBSOCKET_MESSAGE_TYPES.CARD_DRAWN,
                     data: {
                         playerId,
                         fromDiscardPile,
-                        game: gameResponse,
+                        game: this.chinchonGameService.getGameUpdate(room.game.id),
                     },
                 });
 
@@ -168,14 +165,13 @@ export class ChinchonGameHandler extends AbstractGameHandler {
             if (result) {
                 // Update the room's game state with the result
                 room.game = result;
-                const gameResponse = this.chinchonGameService.getGameWithActions(room.game.id);
 
                 this.wsService.broadcastToRoom(roomId, {
                     type: WEBSOCKET_MESSAGE_TYPES.CARD_DISCARDED,
                     data: {
                         playerId,
                         cardId,
-                        game: gameResponse,
+                        game: this.chinchonGameService.getGameUpdate(room.game.id),
                     },
                 });
 
@@ -218,13 +214,12 @@ export class ChinchonGameHandler extends AbstractGameHandler {
                 // Update the room's game state with the result
                 room.game = result;
             }
-            const gameResponse = this.chinchonGameService.getGameWithActions(room.game.id);
 
             this.wsService.broadcastToRoom(roomId, {
                 type: WEBSOCKET_MESSAGE_TYPES.ROUND_CLOSED,
                 data: {
                     playerId,
-                    game: gameResponse,
+                    game: this.chinchonGameService.getGameUpdate(room.game.id),
                 },
             });
 
@@ -255,14 +250,13 @@ export class ChinchonGameHandler extends AbstractGameHandler {
             if (result) {
                 // Update the room's game state with the result
                 room.game = result;
-                const gameResponse = this.chinchonGameService.getGameWithActions(room.game.id);
 
                 this.wsService.broadcastToRoom(roomId, {
                     type: WEBSOCKET_MESSAGE_TYPES.ROUND_CLOSED,
                     data: {
                         playerId,
                         cardId,
-                        game: gameResponse,
+                        game: this.chinchonGameService.getGameUpdate(room.game.id),
                     },
                 });
 
@@ -292,14 +286,13 @@ export class ChinchonGameHandler extends AbstractGameHandler {
 
             const { combinations } = data;
             this.chinchonGameService.showCombinations(room.game.id, playerId, combinations);
-            const gameResponse = this.chinchonGameService.getGameWithActions(room.game.id);
 
             this.wsService.broadcastToRoom(roomId, {
                 type: WEBSOCKET_MESSAGE_TYPES.COMBINATIONS_SHOWN,
                 data: {
                     playerId,
                     combinations,
-                    game: gameResponse,
+                    game: this.chinchonGameService.getGameUpdate(room.game.id),
                 },
             });
 
@@ -379,13 +372,11 @@ export class ChinchonGameHandler extends AbstractGameHandler {
                 // All players are ready, start a new round
                 const newGame = this.chinchonGameService.startGame(room.game.id);
                 if (newGame) {
-                    const gameResponse = this.chinchonGameService.getGameWithActions(room.game.id);
-
                     // Broadcast the new game state to all players
                     this.wsService.broadcastToRoom(roomId, {
                         type: WEBSOCKET_MESSAGE_TYPES.GAME_UPDATE,
                         data: {
-                            game: gameResponse,
+                            game: this.chinchonGameService.getGameUpdate(room.game.id),
                         },
                     });
 
@@ -398,12 +389,10 @@ export class ChinchonGameHandler extends AbstractGameHandler {
                 }
             } else {
                 // Not all players are ready yet, broadcast the updated state
-                const gameResponse = this.chinchonGameService.getGameWithActions(room.game.id);
-
                 this.wsService.broadcastToRoom(roomId, {
                     type: WEBSOCKET_MESSAGE_TYPES.GAME_UPDATE,
                     data: {
-                        game: gameResponse,
+                        game: this.chinchonGameService.getGameUpdate(room.game.id),
                     },
                 });
 
@@ -501,14 +490,11 @@ export class ChinchonGameHandler extends AbstractGameHandler {
             room.game = updatedGame;
             this.chinchonGameService.updateGame(updatedGame);
 
-            // Get fresh game state with actions
-            const gameResponse = this.chinchonGameService.getGameWithActions(room.game.id);
-
             // Broadcast the updated game state
             this.wsService.broadcastToRoom(roomId, {
                 type: WEBSOCKET_MESSAGE_TYPES.GAME_UPDATE,
                 data: {
-                    game: gameResponse,
+                    game: this.chinchonGameService.getGameUpdate(room.game.id),
                 },
             });
 
@@ -599,12 +585,10 @@ export class ChinchonGameHandler extends AbstractGameHandler {
             setTimeout(() => {
                 const newGame = this.chinchonGameService.startGame(room.game.id);
                 if (newGame) {
-                    const gameResponse = this.chinchonGameService.getGameWithActions(room.game.id);
-
                     this.wsService.broadcastToRoom(roomId, {
                         type: WEBSOCKET_MESSAGE_TYPES.GAME_UPDATE,
                         data: {
-                            game: gameResponse,
+                            game: this.chinchonGameService.getGameUpdate(room.game.id),
                         },
                     });
 
@@ -616,11 +600,10 @@ export class ChinchonGameHandler extends AbstractGameHandler {
             }, 1000);
         } else {
             // Broadcast updated state
-            const gameResponse = this.chinchonGameService.getGameWithActions(room.game.id);
             this.wsService.broadcastToRoom(roomId, {
                 type: WEBSOCKET_MESSAGE_TYPES.GAME_UPDATE,
                 data: {
-                    game: gameResponse,
+                    game: this.chinchonGameService.getGameUpdate(room.game.id),
                 },
             });
         }

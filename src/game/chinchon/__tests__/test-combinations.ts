@@ -6,6 +6,7 @@
 import { findCombinations } from '../logic/gameLogic';
 import { Card, Suit } from '@/shared/types/chinchon';
 import { CHINCHON_VALUES } from '../constants';
+import { CardValue } from '@/shared/types';
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -18,7 +19,7 @@ function createCard(suit: Suit, value: number, id?: string): Card {
     return {
         id: id || `card_${suit}_${value}_${Math.random().toString(36).substr(2, 9)}`,
         suit,
-        value,
+        value: value as CardValue,
         displayValue: value.toString(),
         chinchonValue: CHINCHON_VALUES[value] || 0,
     };

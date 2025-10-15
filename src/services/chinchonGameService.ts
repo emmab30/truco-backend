@@ -1,4 +1,4 @@
-import { Game, Team, GameResponse, addPlayer, startGame, dealNewHand, drawCard, discardCard, closeRound, cutWithCard, calculatePlayerScore } from "@/game/chinchon";
+import { Game, Team, GameResponse, addPlayer, startGame, dealNewHand, drawCard, discardCard, closeRound, cutWithCard, calculatePlayerScore, ChinchonGame } from "@/game/chinchon";
 import { GameType } from "@/shared/constants";
 import { BaseGameService } from "./baseGameService";
 import { ChinchonAIService, AIDifficulty } from "@/game/chinchon/ai/aiService";
@@ -329,9 +329,11 @@ export class ChinchonGameService extends BaseGameService {
     }
 
     /**
-     * Get game with actions for all players
+     * Get game update in BaseGame format for client
+     * @param gameId - Game ID
+     * @returns BaseGame with ChinchonMetadata
      */
-    getGameWithActions(gameId: string): any {
+    getGameUpdate(gameId: string): ChinchonGame {
         const game = this.getGame(gameId);
         if (!game) {
             throw new Error("Game not found");
@@ -359,18 +361,32 @@ export class ChinchonGameService extends BaseGameService {
               }
             : undefined;
 
+        // Transform to BaseGame format
         return {
             id: game.id,
-            phase: game.phase,
-            players: playersWithActions,
-            currentPlayerId: game.currentHand?.chinchonState?.currentPlayerId, // Add for easy frontend access
-            currentHand: {
-                ...game.currentHand,
-                chinchonState: serializedChinchonState,
-                currentPlayerId: game.currentHand?.chinchonState?.currentPlayerId, // Also add at hand level
-            },
-            teamScores: game.teamScores,
-            winner: game.winner,
+            players: game.players.map((p: any) => ({
+                id: p.id,
+                name: p.name,
+                photo: p.photo,
+                team: p.team,
+                points: p.totalScore || 0, // Use totalScore for Chinchón
+            })),
+            maxScore: game.gameConfig.maxScore,
+            maxPlayers: game.gameConfig.maxPlayers,
+            metadata: {
+                phase: game.phase,
+                players: playersWithActions,
+                iaMode: game.iaMode,
+                currentHand: game.currentHand ? {
+                    ...game.currentHand,
+                    chinchonState: serializedChinchonState,
+                    currentPlayerId: game.currentHand?.chinchonState?.currentPlayerId,
+                } : null,
+                gameConfig: game.gameConfig,
+                teamScores: game.teamScores,
+                winner: game.winner,
+                history: game.history
+            }
         };
     }
 }

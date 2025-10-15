@@ -34,6 +34,7 @@ export class ChinchonAIService {
             totalScore: 0,
             isEliminated: false,
             availableActions: [],
+            points: 0,
         };
 
         return aiPlayer;

@@ -225,7 +225,7 @@ export class WebSocketService {
                                 playerId,
                                 playerName,
                                 message: disconnectMessage,
-                                game: this.getGameService(room.gameType).getGameWithActions(room.game.id),
+                                game: this.getGameService(room.gameType).getGameUpdate(room.game.id),
                             },
                         });
                     }
@@ -321,7 +321,7 @@ export class WebSocketService {
                 type: WEBSOCKET_MESSAGE_TYPES.ROOM_CREATED,
                 data: {
                     room: this.roomToResponse(room),
-                    game: gameService.getGameWithActions(room.game.id),
+                    game: gameService.getGameUpdate(room.game.id),
                 },
             });
 
@@ -357,7 +357,7 @@ export class WebSocketService {
             this.sendMessage(ws, {
                 type: WEBSOCKET_MESSAGE_TYPES.GAME_UPDATE,
                 data: {
-                    game: this.getGameService(room.gameType).getGameWithActions(room.game.id),
+                    game: this.getGameService(room.gameType).getGameUpdate(room.game.id),
                 },
             });
         } catch (error) {
@@ -394,7 +394,7 @@ export class WebSocketService {
                 type: WEBSOCKET_MESSAGE_TYPES.PLAYER_JOINED,
                 data: {
                     player: joinedPlayer,
-                    game: this.getGameService(room.gameType).getGameWithActions(room.game.id),
+                    game: this.getGameService(room.gameType).getGameUpdate(room.game.id),
                 },
             });
 
@@ -403,7 +403,7 @@ export class WebSocketService {
                 type: WEBSOCKET_MESSAGE_TYPES.ROOM_JOINED,
                 data: {
                     room: this.roomToResponse(room),
-                    game: this.getGameService(room.gameType).getGameWithActions(room.game.id),
+                    game: this.getGameService(room.gameType).getGameUpdate(room.game.id),
                 },
             });
 
@@ -426,7 +426,7 @@ export class WebSocketService {
                     type: WEBSOCKET_MESSAGE_TYPES.GAME_STARTED,
                     data: {
                         room: this.roomToResponse(room),
-                        game: gameService.getGameWithActions(gameWithHand.id),
+                        game: gameService.getGameUpdate(gameWithHand.id),
                     },
                 });
             }
@@ -440,7 +440,7 @@ export class WebSocketService {
             this.sendMessage(ws, {
                 type: WEBSOCKET_MESSAGE_TYPES.GAME_UPDATE,
                 data: {
-                    game: this.getGameService(room.gameType).getGameWithActions(room.game.id),
+                    game: this.getGameService(room.gameType).getGameUpdate(room.game.id),
                 },
             });
         } catch (error) {
@@ -495,7 +495,7 @@ export class WebSocketService {
                     type: WEBSOCKET_MESSAGE_TYPES.PLAYER_JOINED,
                     data: {
                         player: joinedPlayer,
-                        game: this.getGameService(room.gameType).getGameWithActions(room.game.id),
+                        game: this.getGameService(room.gameType).getGameUpdate(room.game.id),
                     },
                 });
 
@@ -518,7 +518,7 @@ export class WebSocketService {
                         type: WEBSOCKET_MESSAGE_TYPES.GAME_STARTED,
                         data: {
                             room: this.roomToResponse(room),
-                            game: gameService.getGameWithActions(gameWithHand.id),
+                            game: gameService.getGameUpdate(gameWithHand.id),
                         },
                     });
                 }
@@ -529,7 +529,7 @@ export class WebSocketService {
                 type: WEBSOCKET_MESSAGE_TYPES.ROOM_JOINED,
                 data: {
                     room: this.roomToResponse(room),
-                    game: room.game ? this.getGameService(room.gameType).getGameWithActions(room.game.id) : null,
+                    game: room.game ? this.getGameService(room.gameType).getGameUpdate(room.game.id) : null,
                 },
             });
         } catch (error) {

@@ -36,6 +36,7 @@ export function addPlayer(game: Game, playerId: string, playerName: string, team
         id: playerId,
         name: playerName,
         team,
+        points: 0,
         position: game.players.length,
         cards: [],
         isDealer: false,

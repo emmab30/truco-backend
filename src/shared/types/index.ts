@@ -3,13 +3,45 @@
 // Tipos compartidos entre diferentes partes de la aplicación
 // ============================================================================
 
-import { GameType } from '@/constants/gameTypes';
+import { GameType } from "@/constants/gameTypes";
 export { GameType };
+
+// ============================================================================
+// BASE GAME COMPONENTS
+// ============================================================================
+
+export interface BasePlayer {
+    id: string;
+    name: string;
+    photo?: string;
+    team: number;
+    points: number;
+}
+
+export interface BaseGame<TMetadata = any> {
+    id: string;
+    players: BasePlayer[];
+    maxScore: number;
+    maxPlayers: number;
+    metadata: TMetadata;
+}
+
+export interface BaseCard {
+    id: string;
+    suit: Suit;
+    value: CardValue | number;
+}
+
+export type Suit = "oros" | "copas" | "espadas" | "bastos";
+export type CardValue = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 10 | 11 | 12 | number;
+
+// ============================================================================
+// ROOM
+// ============================================================================
 
 export interface Room {
     id: string;
     name: string;
-    game: any; // Will be typed by specific game types
     maxPlayers: number;
     isActive: boolean;
     connections: Map<string, WebSocket>;
@@ -19,8 +51,16 @@ export interface Room {
     maxScore: number;
     gameType: GameType;
     hasAI?: boolean;
-    aiDifficulty?: 'easy' | 'medium' | 'hard';
+    aiDifficulty?: "easy" | "medium" | "hard";
+
+    // Internal game state (server-side only, not sent to clients)
+    // Clients receive game updates via GAME_UPDATE event with BaseGame structure
+    game?: any;
 }
+
+// ============================================================================
+// GAME HISTORY
+// ============================================================================
 
 export interface GameHistory {
     id: string;
@@ -54,7 +94,7 @@ export interface CreateRoomRequest {
     maxScore?: number;
     gameType?: GameType;
     hasAI?: boolean;
-    aiDifficulty?: 'easy' | 'medium' | 'hard';
+    aiDifficulty?: "easy" | "medium" | "hard";
 }
 
 export interface JoinRoomRequest {
@@ -74,22 +114,25 @@ export interface WebSocketMessage {
     playerId?: string;
 }
 export interface WebSocketEvents {
-    // Generic room events
+    // Generic room events (Client to Server)
     REGISTER_PLAYER: { playerId: string };
     CREATE_ROOM: CreateRoomRequest;
     JOIN_ROOM: JoinRoomRequest;
     LEAVE_ROOM: {};
     GET_ROOMS: {};
-    
-    // Generic server responses
+
+    // Generic server responses (Server to Client)
     PLAYER_REGISTERED: { playerId: string };
-    ROOM_CREATED: { room: any; game: any };
-    ROOM_JOINED: { room: any; game: any };
-    PLAYER_JOINED: { player: any; game: any };
-    PLAYER_LEFT: { playerId: string; game: any };
-    ROOM_LIST_UPDATED: { rooms: any[] };
+    ROOM_CREATED: { room: Room };
+    ROOM_JOINED: { room: Room };
+    PLAYER_JOINED: { player: BasePlayer; room: Room };
+    PLAYER_LEFT: { playerId: string; room: Room };
+    ROOM_LIST_UPDATED: { rooms: Room[] };
     ERROR: { message: string };
-    
+
+    // Game updates (Server to Client)
+    GAME_UPDATE: { game: BaseGame };
+
     // Game-specific events will be defined in game-specific type files
     [key: string]: any;
 }
@@ -98,5 +141,5 @@ export interface WebSocketEvents {
 // GAME-SPECIFIC TYPE EXPORTS
 // ============================================================================
 
-export * as TrucoTypes from './truco';
-export * as ChinchonTypes from './chinchon';
+export * as TrucoTypes from "./truco";
+export * as ChinchonTypes from "./chinchon";
