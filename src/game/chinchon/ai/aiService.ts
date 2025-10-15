@@ -33,6 +33,7 @@ export class ChinchonAIService {
             score: 0,
             totalScore: 0,
             isEliminated: false,
+            combinations: [],
             availableActions: [],
             points: 0,
         };

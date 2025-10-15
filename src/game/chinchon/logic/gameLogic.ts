@@ -45,6 +45,7 @@ export function addPlayer(game: Game, playerId: string, playerName: string, team
         totalScore: 0,
         isEliminated: false,
         availableActions: [],
+        combinations: [],
         ...(photo && { photo }),
     };
 
