@@ -88,9 +88,12 @@ export function formatPlayerName(fullName?: string | null): string {
 
     const names = fullName.split(" ");
     const firstName = names[0];
-    const lastName = names[names.length - 1]?.charAt(0).toUpperCase();
 
-    if (!lastName) return firstName!;
+    if (names?.length > 1) {
+        const lastName = names[names.length - 1]?.charAt(0).toUpperCase();
+        if (!lastName) return `${firstName}`;
+        return `${firstName} ${lastName}.`;
+    }
 
-    return `${firstName} ${lastName}.`;
+    return `${firstName}`;
 }
