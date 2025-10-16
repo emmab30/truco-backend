@@ -13,7 +13,7 @@ import { WebSocketService } from "@/services/websocketService";
 import { TrucoGameService } from "@/services/trucoGameService";
 import { ChinchonGameService } from "@/services/chinchonGameService";
 import { RoomService } from "@/services/roomService";
-import { apiRoutes } from "@/routes/api";
+import { createApiRoutes } from "@/routes/api";
 
 // ============================================================================
 // EXPRESS SERVER SETUP
@@ -42,8 +42,13 @@ app.get("/health", (_req, res) => {
     });
 });
 
+// Initialize services
+const trucoGameService = new TrucoGameService();
+const chinchonGameService = new ChinchonGameService();
+const roomService = new RoomService(trucoGameService, chinchonGameService);
+
 // API routes
-app.use("/api", apiRoutes);
+app.use("/api", createApiRoutes(trucoGameService, chinchonGameService, roomService));
 
 // ============================================================================
 // WEBSOCKET SERVER SETUP
@@ -53,11 +58,6 @@ const wss = new WebSocketServer({
     server,
     path: "/ws",
 });
-
-// Initialize services
-const trucoGameService = new TrucoGameService();
-const chinchonGameService = new ChinchonGameService();
-const roomService = new RoomService(trucoGameService, chinchonGameService);
 const wsService = new WebSocketService(trucoGameService, chinchonGameService, roomService);
 
 // WebSocket connection handling

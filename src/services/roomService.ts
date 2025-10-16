@@ -248,6 +248,7 @@ export class RoomService {
      * @returns Array of room responses
      */
     getAllRooms(): RoomResponse[] {
+        console.log(`This rooms?`, this.rooms);
         return Array.from(this.rooms.values()).map((room) => this.roomToResponse(room));
     }
 
