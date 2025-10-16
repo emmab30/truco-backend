@@ -111,10 +111,16 @@ export function createApiRoutes(trucoGameService: TrucoGameService, _chinchonGam
                 result: {
                     type: "article",
                     id: `${roomId}`,
-                    title: `Únete a mi partida de ${roomName}!`,
+                    title: `Únete a mi partida de ${roomName}! 🎮`,
                     description: `🎮 Juega conmigo en ${roomName}`,
                     input_message_content: {
-                        message_text: `¡Únete a mi partida de ${roomName}! \n${ogUrl}`,
+                        message_text: `¡Únete a mi partida de ${roomName} 🎮!`,
+                        link_preview_options: {
+                            url: ogUrl,
+                            prefer_small_media: false,
+                            prefer_large_media: true,
+                            show_above_text: false,
+                        },
                     },
                     reply_markup: {
                         inline_keyboard: [
