@@ -24,10 +24,16 @@ const server = createServer(app);
 
 // Middleware
 app.use(helmet());
-app.use(
+/* app.use(
     cors({
         origin: SERVER_CONFIG.corsOrigin,
         credentials: true,
+    })
+); */
+app.use(
+    cors({
+        origin: '*',
+        credentials: false,
     })
 );
 app.use(express.json());
