@@ -86,8 +86,6 @@ export function formatPlayerName(fullName?: string | null): string {
         return "Jugador";
     }
 
-    console.log(`Full name`, fullName);
-
     const names = fullName.split(" ");
     const firstName = names[0];
 
