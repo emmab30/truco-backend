@@ -33,9 +33,7 @@ export function createApiRoutes(trucoGameService: TrucoGameService, _chinchonGam
                 });
             }
 
-            console.log(`Rooms`, roomService.getAllRooms());
             const room = roomService.getRoom(id);
-
             if (!room) {
                 return res.status(404).json({
                     success: false,
@@ -86,8 +84,6 @@ export function createApiRoutes(trucoGameService: TrucoGameService, _chinchonGam
     router.post("/telegram/prepared-message", async (req, res) => {
         try {
             const { userId, roomId, roomName } = req.body;
-            console.log(`[Debug] Received request body:`, req.body);
-
             if (!userId || !roomId || !roomName) {
                 return res.status(400).json({
                     success: false,
