@@ -74,6 +74,25 @@ export class WebSocketService {
                 this.disconnectTimeouts.delete(playerId);
             }
 
+            // Check if this player already has a connection (reconnection case)
+            const existingConnection = this.playerConnections.get(playerId);
+            if (existingConnection && existingConnection !== ws) {
+                console.log(`🔄 Player reconnecting: ${playerId}`);
+                console.log(`🔄 Old connection state: ${existingConnection.readyState}`);
+                console.log(`🔄 New connection state: ${ws.readyState}`);
+
+                // ⭐ Mark the old connection as replaced so handleDisconnect ignores it
+                (existingConnection as any)._isReplacedConnection = true;
+
+                // Close the old connection
+                if (existingConnection.readyState === 1) {
+                    existingConnection.close();
+                }
+            }
+
+            // Set the new connection AFTER handling the old one
+            this.playerConnections.set(playerId, ws);
+
             // REGISTER_PLAYER does not have a roomId, so we need to add the connection to the room
             const room = this.roomService.getRoomByPlayer(playerId);
             if (room) {
@@ -81,19 +100,6 @@ export class WebSocketService {
                 console.log(`🔗 Re-added connection for player ${playerId} to room ${room.id} after reconnection`);
             }
 
-            // Check if this player already has a connection (reconnection case)
-            const existingConnection = this.playerConnections.get(playerId);
-            if (existingConnection && existingConnection !== ws) {
-                console.log(`🔄 Player reconnecting: ${playerId}`);
-                console.log(`🔄 Old connection state: ${existingConnection.readyState}`);
-                console.log(`🔄 New connection state: ${ws.readyState}`);
-                // Close the old connection
-                if (existingConnection.readyState === 1) {
-                    existingConnection.close();
-                }
-            }
-
-            this.playerConnections.set(playerId, ws);
             if (roomId) {
                 this.roomService.addConnection(roomId, playerId, ws);
                 console.log(`🔗 Added connection for player ${playerId} to room ${roomId}`);
@@ -218,19 +224,17 @@ export class WebSocketService {
     handleDisconnect(ws: any): void {
         console.log(`🔍 Handling disconnect for WebSocket connection`);
 
+        // ⭐ Check if this connection was marked as replaced
+        if ((ws as any)._isReplacedConnection) {
+            console.log(`⚠️ Ignoring disconnect for replaced connection`);
+            return;
+        }
+
         // Find player by WebSocket connection
         for (const [playerId, connection] of this.playerConnections.entries()) {
             if (connection === ws) {
                 console.log(`👋 Player disconnected: ${playerId}`);
                 console.log(`🔍 Connection state before removal: ${ws.readyState}`);
-
-                // Check if this is still the current connection for this player
-                // If not, it means the player already reconnected with a new connection
-                const currentConnection = this.playerConnections.get(playerId);
-                if (currentConnection !== ws) {
-                    console.log(`⚠️ Ignoring disconnect for old connection (player already reconnected)`);
-                    return;
-                }
 
                 this.playerConnections.delete(playerId);
 
