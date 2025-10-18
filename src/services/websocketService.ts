@@ -14,6 +14,7 @@ import { ChinchonGameHandler } from "@/game/handlers/ChinchonGameHandler";
 export class WebSocketService {
     private playerConnections: Map<string, any> = new Map(); // playerId -> WebSocket
     private gameHandlerRegistry: GameHandlerRegistry;
+    private disconnectTimeouts: Map<string, NodeJS.Timeout> = new Map(); // playerId -> timeout for delayed disconnect
 
     constructor(private trucoGameService: TrucoGameService, private chinchonGameService: ChinchonGameService, private roomService: RoomService) {
         // chinchonGameService is used indirectly through the ChinchonGameHandler
@@ -51,10 +52,27 @@ export class WebSocketService {
     handleMessage(ws: any, message: WebSocketMessage): void {
         const { type, roomId, playerId } = message;
 
+        // Handle PING without logging to reduce noise
+        if (type === "PING") {
+            if (ws.readyState === 1) { // WebSocket.OPEN
+                console.log(`🏓 Received PING from player ${playerId}, sending PONG!`);
+                ws.send(JSON.stringify({ type: "PONG" }));
+            }
+            return;
+        }
+
         console.log(`🔍 Processing message: ${type} for player: ${playerId} in room: ${roomId}`);
 
         // Register the WebSocket connection
         if (playerId) {
+            // Cancel any pending disconnect timeout (player reconnected)
+            const pendingTimeout = this.disconnectTimeouts.get(playerId);
+            if (pendingTimeout) {
+                console.log(`✅ Player reconnected, canceling disconnect: ${playerId}`);
+                clearTimeout(pendingTimeout);
+                this.disconnectTimeouts.delete(playerId);
+            }
+
             // Check if this player already has a connection (reconnection case)
             const existingConnection = this.playerConnections.get(playerId);
             if (existingConnection && existingConnection !== ws) {
@@ -199,48 +217,68 @@ export class WebSocketService {
                 console.log(`🔍 Connection state before removal: ${ws.readyState}`);
                 this.playerConnections.delete(playerId);
 
-                // Get the room the player was in before removing them
+                // Get the room the player was in
                 const room = this.roomService.getRoomByPlayer(playerId);
                 if (room) {
                     const player = room.game.players.find((p: any) => p.id === playerId);
                     const playerName = player?.name || "Jugador desconocido";
                     const roomId = room.id;
-                    const wasGameActive = room.isActive && room.game.players.length >= 2;
-                    const willHaveOnlyOnePlayer = room.connections.size === 2;
-                    const willBeEmpty = room.connections.size <= 1;
 
                     console.log(`🏠 Player was in room: ${roomId}`);
-                    console.log(`🎮 Game was active: ${wasGameActive}`);
-                    console.log(`👥 Room connections: ${room.connections.size}`);
-                    console.log(`👥 Room players: ${room.game.players.length}`);
+                    console.log(`⏰ Setting 30s grace period for reconnection`);
 
-                    // Send disconnect notification to remaining players BEFORE removing the room
-                    if (room.game.players.length > 1 && !playerId.startsWith("temp-") && (willHaveOnlyOnePlayer || willBeEmpty)) {
-                        const disconnectMessage = wasGameActive ? `${playerName} abandonó el juego` : `${playerName} se desconectó de la sala`;
-                        console.log(`📢 Sending disconnect notification: ${disconnectMessage}`);
+                    // Remove the WebSocket connection from room immediately
+                    this.roomService.removeConnection(roomId, playerId);
 
-                        this.broadcastToRoom(roomId, {
-                            type: WEBSOCKET_MESSAGE_TYPES.PLAYER_DISCONNECTED,
-                            data: {
-                                playerId,
-                                playerName,
-                                message: disconnectMessage,
-                                game: this.getGameService(room.gameType).getGameUpdate(room.game.id),
-                            },
-                        });
-                    }
+                    // Schedule delayed removal with 30 second grace period
+                    const timeout = setTimeout(() => {
+                        console.log(`⏰ Grace period expired for ${playerId}, removing from room`);
+                        
+                        // Check if player is still in room (might have been removed manually)
+                        const currentRoom = this.roomService.getRoomByPlayer(playerId);
+                        if (currentRoom && currentRoom.id === roomId) {
+                            const wasGameActive = currentRoom.isActive && currentRoom.game.players.length >= 2;
+                            const willHaveOnlyOnePlayer = currentRoom.game.players.length === 2;
+                            const willBeEmpty = currentRoom.game.players.length <= 1;
 
-                    // Remove player from room (this will delete the room if it becomes empty or has only one player)
-                    console.log(`🗑️ Removing player from room`);
-                    this.roomService.leaveRoom(playerId);
+                            console.log(`🎮 Game was active: ${wasGameActive}`);
+                            console.log(`👥 Room players: ${currentRoom.game.players.length}`);
 
-                    // Update room list for everyone
-                    const allRooms = this.roomService.getAllRooms();
-                    console.log(`📡 Broadcasting room list: ${allRooms.length} rooms`);
-                    this.broadcastToAll({
-                        type: WEBSOCKET_MESSAGE_TYPES.ROOM_LIST_UPDATED,
-                        data: { rooms: allRooms },
-                    });
+                            // Send disconnect notification to remaining players BEFORE removing the room
+                            if (currentRoom.game.players.length > 1 && !playerId.startsWith("temp-") && (willHaveOnlyOnePlayer || willBeEmpty)) {
+                                const disconnectMessage = wasGameActive ? `${playerName} abandonó el juego` : `${playerName} se desconectó de la sala`;
+                                console.log(`📢 Sending disconnect notification: ${disconnectMessage}`);
+
+                                this.broadcastToRoom(roomId, {
+                                    type: WEBSOCKET_MESSAGE_TYPES.PLAYER_DISCONNECTED,
+                                    data: {
+                                        playerId,
+                                        playerName,
+                                        message: disconnectMessage,
+                                        game: this.getGameService(currentRoom.gameType).getGameUpdate(currentRoom.game.id),
+                                    },
+                                });
+                            }
+
+                            // Remove player from room (this will delete the room if it becomes empty or has only one player)
+                            console.log(`🗑️ Removing player from room after grace period`);
+                            this.roomService.leaveRoom(playerId);
+
+                            // Update room list for everyone
+                            const allRooms = this.roomService.getAllRooms();
+                            console.log(`📡 Broadcasting room list: ${allRooms.length} rooms`);
+                            this.broadcastToAll({
+                                type: WEBSOCKET_MESSAGE_TYPES.ROOM_LIST_UPDATED,
+                                data: { rooms: allRooms },
+                            });
+                        }
+
+                        // Clean up the timeout reference
+                        this.disconnectTimeouts.delete(playerId);
+                    }, 30000); // 30 seconds grace period
+
+                    // Store the timeout so we can cancel it if player reconnects
+                    this.disconnectTimeouts.set(playerId, timeout);
                 } else {
                     console.log(`⚠️ Player ${playerId} was not in any room`);
                 }
