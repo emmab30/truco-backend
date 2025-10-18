@@ -255,18 +255,18 @@ export class TrucoGameHandler extends AbstractGameHandler {
                         // Mano (caller) announces first
                         setTimeout(() => {
                             this.sendSpeechBubble(roomId, caller.id, envidoState.callerMessage!, caller.name, 10);
-                        }, 1200);
+                        }, 1000);
                         setTimeout(() => {
                             this.sendSpeechBubble(roomId, responder.id, envidoState.responderMessage!, responder.name, 10);
-                        }, 1600);
+                        }, 2000);
                     } else {
                         // Mano (responder) announces first
                         setTimeout(() => {
                             this.sendSpeechBubble(roomId, responder.id, envidoState.responderMessage!, responder.name, 10);
-                        }, 1200);
+                        }, 1000);
                         setTimeout(() => {
                             this.sendSpeechBubble(roomId, caller.id, envidoState.callerMessage!, caller.name, 10);
-                        }, 1600);
+                        }, 2000);
                     }
                 }
             }
