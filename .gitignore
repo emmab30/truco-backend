@@ -78,3 +78,5 @@ temp/
 # PM2 logs
 logs/
 *.log
+
+/src/generated/prisma

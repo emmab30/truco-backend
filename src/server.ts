@@ -7,6 +7,7 @@ import cors from "cors";
 import helmet from "helmet";
 import { createServer } from "http";
 import { WebSocketServer } from "ws";
+import prisma from "@/config/prisma";
 
 import { SERVER_CONFIG } from "@/shared/constants";
 import { WebSocketService } from "@/services/websocketService";
@@ -32,21 +33,12 @@ app.use(helmet());
 ); */
 app.use(
     cors({
-        origin: '*',
+        origin: "*",
         credentials: false,
     })
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Health check endpoint
-app.get("/health", (_req, res) => {
-    res.json({
-        status: "ok",
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-    });
-});
 
 // Initialize services
 const trucoGameService = new TrucoGameService();
@@ -76,12 +68,12 @@ wss.on("connection", (ws, req) => {
     let missedPings = 0;
     const PING_INTERVAL = 30000; // 30 seconds
     const MAX_MISSED_PINGS = 3; // Allow 3 missed pings before terminating
-    
+
     const pingInterval = setInterval(() => {
         if (!isAlive) {
             missedPings++;
             console.log(`⚠️ Missed ping response (${missedPings}/${MAX_MISSED_PINGS})`);
-            
+
             if (missedPings >= MAX_MISSED_PINGS) {
                 console.log(`💀 Connection is dead after ${missedPings} missed pings, terminating`);
                 clearInterval(pingInterval);
@@ -162,12 +154,24 @@ wss.on("connection", (ws, req) => {
 const PORT = SERVER_CONFIG.port;
 const HOST = SERVER_CONFIG.host;
 
-server.listen(PORT, HOST, () => {
+server.listen(PORT, HOST, async () => {
     console.log(`🚀 Server started successfully!`);
     console.log(`   📡 HTTP: http://${HOST}:${PORT}`);
     console.log(`   🔌 WebSocket: ws://${HOST}:${PORT}/ws`);
     console.log(`   🌐 CORS: ${SERVER_CONFIG.corsOrigin}`);
-    
+
+    // Verificar conexión a MongoDB
+    try {
+        await prisma.$connect();
+        console.log(`   🗄️  Database: Connected to MongoDB`);
+
+        await prisma.$runCommandRaw({ ping: 1 });
+        console.log(`   ✅ Database ping successful`);
+    } catch (error) {
+        console.error(`   ❌ Database connection failed:`, error);
+        console.error(`   ⚠️  Server will continue but database operations will fail`);
+    }
+
     // Start room cleanup job (runs every minute)
     const CLEANUP_INTERVAL = 1 * 60 * 1000; // 1 minute
     const cleanupInterval = setInterval(() => {
@@ -178,10 +182,10 @@ server.listen(PORT, HOST, () => {
             console.log(`✅ Cleanup complete: removed ${cleanedCount} empty room(s)`);
         }
     }, CLEANUP_INTERVAL);
-    
+
     // Store cleanup interval reference for graceful shutdown
     (server as any).cleanupInterval = cleanupInterval;
-    
+
     console.log(`   🧹 Room cleanup enabled (runs every ${CLEANUP_INTERVAL / 60000} minutes)`);
 });
 
@@ -189,35 +193,50 @@ server.listen(PORT, HOST, () => {
 // GRACEFUL SHUTDOWN
 // ============================================================================
 
-function gracefulShutdown(signal: string) {
+async function gracefulShutdown(signal: string) {
     console.log(`${signal} received, shutting down gracefully`);
-    
+
     // Stop cleanup interval
     if ((server as any).cleanupInterval) {
         clearInterval((server as any).cleanupInterval);
-        console.log("Room cleanup interval stopped");
+        console.log("✅ Room cleanup interval stopped");
     }
-    
+
     // Close WebSocket Server first
-    console.log("Closing WebSocket connections...");
+    console.log("🔌 Closing WebSocket connections...");
     wss.clients.forEach((ws) => {
         ws.close(1000, "Server shutting down");
     });
-    
+
     // Close WebSocket Server
     wss.close(() => {
-        console.log("WebSocket server closed");
-        
+        console.log("✅ WebSocket server closed");
+
         // Then close HTTP server
-        server.close(() => {
-            console.log("HTTP server closed");
+        server.close(async () => {
+            console.log("✅ HTTP server closed");
+
+            // Disconnect Prisma
+            console.log("🗄️  Disconnecting Prisma...");
+            try {
+                await prisma.$disconnect();
+                console.log("✅ Prisma disconnected");
+            } catch (error) {
+                console.error("❌ Error disconnecting Prisma:", error);
+            }
+
             process.exit(0);
         });
     });
-    
+
     // Force exit after 10 seconds if graceful shutdown fails
-    setTimeout(() => {
-        console.error("Forced shutdown after timeout");
+    setTimeout(async () => {
+        console.error("⚠️  Forced shutdown after timeout");
+        try {
+            await prisma.$disconnect();
+        } catch (error) {
+            console.error("❌ Error disconnecting Prisma during forced shutdown:", error);
+        }
         process.exit(1);
     }, 10000);
 }
@@ -227,14 +246,14 @@ process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 process.on("SIGHUP", () => gracefulShutdown("SIGHUP"));
 
 // Handle uncaught errors
-process.on("uncaughtException", (error) => {
+process.on("uncaughtException", async (error) => {
     console.error("❌ Uncaught Exception:", error);
-    gracefulShutdown("UNCAUGHT_EXCEPTION");
+    await gracefulShutdown("UNCAUGHT_EXCEPTION");
 });
 
-process.on("unhandledRejection", (reason, promise) => {
+process.on("unhandledRejection", async (reason, promise) => {
     console.error("❌ Unhandled Rejection at:", promise, "reason:", reason);
-    gracefulShutdown("UNHANDLED_REJECTION");
+    await gracefulShutdown("UNHANDLED_REJECTION");
 });
 
 export { app, server, wsService };

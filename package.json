@@ -4,10 +4,11 @@
   "description": "Truco game backend server with TypeScript and Express",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc && tsc-alias",
+    "build": "npm run prisma:generate && tsc && tsc-alias",
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only --ignore-watch node_modules -r tsconfig-paths/register src/server.ts",
     "clean": "rimraf dist",
+    "prisma:generate": "prisma format && prisma generate",
     "prebuild": "npm run clean",
     "type-check": "tsc --noEmit",
     "lint": "eslint src/**/*.ts",
@@ -16,6 +17,7 @@
     "test:combinations": "ts-node -r tsconfig-paths/register src/game/chinchon/__tests__/test-combinations.ts"
   },
   "dependencies": {
+    "@prisma/client": "^6.17.1",
     "axios": "^1.12.2",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
@@ -35,6 +37,7 @@
     "@typescript-eslint/eslint-plugin": "^6.13.0",
     "@typescript-eslint/parser": "^6.13.0",
     "eslint": "^8.54.0",
+    "prisma": "^6.17.1",
     "rimraf": "^5.0.5",
     "ts-node": "^10.9.1",
     "ts-node-dev": "^2.0.0",

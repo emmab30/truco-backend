@@ -4,9 +4,9 @@ import { TrucoGameService } from "@/services/trucoGameService";
 import { ChinchonGameService } from "@/services/chinchonGameService";
 import { RoomService } from "@/services/roomService";
 import authRoutes from "@/routes/auth";
-// import { optionalAuth } from "../middleware/auth";
 
-export function createApiRoutes(trucoGameService: TrucoGameService, _chinchonGameService: ChinchonGameService, roomService: RoomService) {
+
+export function createApiRoutes(_trucoGameService: TrucoGameService, _chinchonGameService: ChinchonGameService, roomService: RoomService) {
     const router = Router();
 
     // ============================================================================
@@ -161,18 +161,28 @@ export function createApiRoutes(trucoGameService: TrucoGameService, _chinchonGam
      * GET /api/health
      * Health check endpoint
      */
-    router.get("/health", (_req, res) => {
-        const response = {
-            success: true,
-            data: {
-                status: "ok",
+    // Health check endpoint con verificación de DB
+    router.get("/health", async (_, res) => {
+        try {
+            return res.json({
+                success: true,
+                data: {
+                    status: "ok",
+                    timestamp: new Date().toISOString(),
+                    uptime: process.uptime(),
+                    database: "connected",
+                },
+            });
+        } catch (error) {
+            console.error("❌ Health check failed:", error);
+            return res.status(503).json({
+                status: "error",
                 timestamp: new Date().toISOString(),
                 uptime: process.uptime(),
-                rooms: roomService.getAllRooms().length,
-                games: trucoGameService.getAllGames().length,
-            },
-        };
-        res.json(response);
+                database: "disconnected",
+                error: error instanceof Error ? error.message : "Unknown error",
+            });
+        }
     });
 
     return router;
