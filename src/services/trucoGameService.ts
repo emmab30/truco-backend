@@ -1,8 +1,9 @@
 import { addPlayer, startGame, dealNewHand, dealNewRound, playCard, callEnvido, respondEnvido, callTruco, respondTruco, goToMazo, getAvailableActions } from "@/game/truco";
-import { Game, Team, TrucoGame, EnvidoCall, TrucoCall, EnvidoResponse, TrucoResponse } from "@/shared/types/truco";
+import { Game, Team, TrucoGame, EnvidoCall, TrucoCall, EnvidoResponse, TrucoResponse, GamePhase } from "@/shared/types/truco";
 import { GameType } from "@/shared/constants";
 import { BaseGameService } from "./baseGameService";
 import { TrucoAIService } from "@/game/truco/ai/aiService";
+import prisma from "@/config/prisma";
 
 /**
  * Truco Game Service
@@ -272,7 +273,7 @@ export class TrucoGameService extends BaseGameService {
      * @returns BaseGame with TrucoMetadata
      */
     getGameUpdate(gameId: string): TrucoGame {
-        const game = this.getGame(gameId);
+        const game = this.getGame(gameId) as Game;
         if (!game) {
             throw new Error("Game not found");
         }
@@ -281,6 +282,9 @@ export class TrucoGameService extends BaseGameService {
             ...player,
             availableActions: getAvailableActions(game, player.id),
         }));
+
+        // Change phase in case the game is ended
+        if (this.isEndedGame(game)) game.phase = GamePhase.GAME_END;
 
         // Transform to BaseGame format
         return {
@@ -304,5 +308,40 @@ export class TrucoGameService extends BaseGameService {
                 history: game.history,
             },
         };
+    }
+
+    isEndedGame(game: Game): boolean {
+        // Check if there is a winner
+        const maxScore = game.gameConfig.maxScore;
+        const team1Score = game.players.filter((p) => p.team === Team.TEAM_1).reduce((sum, p) => sum + p.points, 0);
+        const team2Score = game.players.filter((p) => p.team === Team.TEAM_2).reduce((sum, p) => sum + p.points, 0);
+
+        if (team1Score >= maxScore || team2Score >= maxScore) {
+            // Determine which team won
+            const winningTeam = team1Score >= maxScore ? Team.TEAM_1 : Team.TEAM_2;
+
+            // Get all user ids from winners and losers
+            const winnerUserIds = game.players.filter((p) => p.team === winningTeam).map((p) => p.id);
+            const loserUserIds = game.players.filter((p) => p.team !== winningTeam).map((p) => p.id);
+
+            console.log(`🏆 Game Over! Winners (Team ${winningTeam + 1}):`, winnerUserIds, "Losers:", loserUserIds);
+
+            // Update winners and losers
+            prisma.user.updateMany({
+                where: { uid: { in: winnerUserIds } },
+                data: {
+                    wins: { increment: 1 },
+                },
+            });
+
+            prisma.user.updateMany({
+                where: { uid: { in: loserUserIds } },
+                data: { losses: { increment: 1 } },
+            });
+
+            return true;
+        }
+
+        return false;
     }
 }

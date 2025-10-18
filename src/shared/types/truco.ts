@@ -126,6 +126,7 @@ export enum GamePhase {
     ENVIDO = "envido",
     TRUCO = "truco",
     HAND_END = "handEnd",
+    GAME_END = "gameEnd",
 }
 
 export enum Team {

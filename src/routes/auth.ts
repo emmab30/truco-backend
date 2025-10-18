@@ -67,6 +67,8 @@ router.post("/verify", async (req: Request, res: Response) => {
             email: decodedToken.email,
             name: decodedToken["name"],
             picture: decodedToken.picture,
+            wins: existingUser?.wins || 0,
+            losses: existingUser?.losses || 0,
         });
     } catch (error) {
         console.error("Error verifying token:", error);

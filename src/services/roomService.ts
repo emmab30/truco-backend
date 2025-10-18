@@ -47,7 +47,19 @@ export class RoomService {
      * @param playerPhoto - Player photo URL
      * @returns Created room
      */
-    createRoom(roomName: string, playerName: string, playerId: string, maxPlayers: number = 2, isPrivate: boolean = false, password?: string, maxScore?: number, gameType: string = GameType.TRUCO, hasAI: boolean = false, aiDifficulty: AIDifficulty = 'medium', playerPhoto?: string | null): Room {
+    createRoom(
+        roomName: string,
+        playerName: string,
+        playerId: string,
+        maxPlayers: number = 2,
+        isPrivate: boolean = false,
+        password?: string,
+        maxScore?: number,
+        gameType: string = GameType.TRUCO,
+        hasAI: boolean = false,
+        aiDifficulty: AIDifficulty = "medium",
+        playerPhoto?: string | null
+    ): Room {
         // Validate game type
         if (!isValidGameType(gameType)) {
             throw new Error(`Invalid game type: ${gameType}`);
@@ -55,11 +67,11 @@ export class RoomService {
 
         const roomId = generateId();
         const factory = getGameFactory(gameType as any);
-        
+
         // Use factory to get appropriate max players and score
         const finalMaxPlayers = Math.min(maxPlayers, factory.getMaxPlayers());
         const finalMaxScore = maxScore || factory.getDefaultMaxScore();
-        
+
         // Get the appropriate game service based on game type
         const gameService = this.getGameService(gameType);
         const game = gameService.createGame(finalMaxScore, gameType);
@@ -97,7 +109,7 @@ export class RoomService {
         this.playerRooms.set(playerId, roomId);
 
         // Log room creation
-        console.log(`🏠 Room created: "${roomName}" | Game: ${gameType} | Players: ${finalMaxPlayers} | Score: ${finalMaxScore} | ${isPrivate ? 'Private' : 'Public'}`);
+        console.log(`🏠 Room created: "${roomName}" | Game: ${gameType} | Players: ${finalMaxPlayers} | Score: ${finalMaxScore} | ${isPrivate ? "Private" : "Public"}`);
 
         return room;
     }
@@ -207,9 +219,9 @@ export class RoomService {
         const room = this.rooms.get(roomId);
         if (!room) return false;
 
-         // Check if this will be the last player leaving OR if there will be only 1 player left (can't play alone)
-         const willBeEmpty = room.connections.size <= 1;
-         const willHaveOnlyOnePlayer = room.connections.size === 2;
+        // Check if this will be the last player leaving OR if there will be only 1 player left (can't play alone)
+        const willBeEmpty = room.connections.size <= 1;
+        const willHaveOnlyOnePlayer = room.connections.size === 2;
 
         // Remove player from room connections
         room.connections.delete(playerId);
@@ -222,13 +234,13 @@ export class RoomService {
         };
         room.game = updatedGame;
 
-         // If room is now empty OR has only one player left (can't play alone), delete it
-         if (willBeEmpty || willHaveOnlyOnePlayer) {
-             console.log(`🗑️ Room deleted: ${roomId} (insufficient players)`);
-             this.rooms.delete(roomId);
-             const gameService = this.getGameService(room.gameType);
-             gameService.deleteGame(room.game.id);
-         }
+        // If room is now empty OR has only one player left (can't play alone), delete it
+        if (willBeEmpty || willHaveOnlyOnePlayer) {
+            console.log(`🗑️ Room deleted: ${roomId} (insufficient players)`);
+            this.rooms.delete(roomId);
+            const gameService = this.getGameService(room.gameType);
+            gameService.deleteGame(room.game.id);
+        }
 
         return true;
     }
@@ -242,13 +254,11 @@ export class RoomService {
         return this.rooms.get(roomId) || null;
     }
 
-
     /**
      * Get all rooms
      * @returns Array of room responses
      */
     getAllRooms(): RoomResponse[] {
-        console.log(`This rooms?`, this.rooms);
         return Array.from(this.rooms.values()).map((room) => this.roomToResponse(room));
     }
 
@@ -359,12 +369,12 @@ export class RoomService {
             const room = this.rooms.get(roomId);
             if (room) {
                 console.log(`🧹 Cleaning up empty room: ${room.name} (${roomId}) - Age: ${Math.round((now - room.createdAt.getTime()) / 60000)} minutes`);
-                
+
                 // Remove all player mappings
                 for (const player of room.game.players) {
                     this.playerRooms.delete(player.id);
                 }
-                
+
                 // Delete the room
                 this.rooms.delete(roomId);
             }
