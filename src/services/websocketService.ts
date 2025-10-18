@@ -11,6 +11,8 @@ import { ChinchonGameHandler } from "@/game/handlers/ChinchonGameHandler";
  * WebSocket Service
  * Handles all WebSocket communication and delegates game-specific events to appropriate handlers
  */
+
+const GRACE_PERIOD_TIMEOUT = 60 * 1000; // 60 seconds grace period for reconnection
 export class WebSocketService {
     private playerConnections: Map<string, any> = new Map(); // playerId -> WebSocket
     private gameHandlerRegistry: GameHandlerRegistry;
@@ -246,12 +248,12 @@ export class WebSocketService {
                     const roomId = room.id;
 
                     console.log(`🏠 Player was in room: ${roomId}`);
-                    console.log(`⏰ Setting 30s grace period for reconnection`);
+                    console.log(`⏰ Setting ${GRACE_PERIOD_TIMEOUT}ms grace period for reconnection`);
 
                     // Remove the WebSocket connection from room immediately
                     this.roomService.removeConnection(roomId, playerId);
 
-                    // Schedule delayed removal with 30 second grace period
+                    // Schedule delayed removal with grace period
                     const timeout = setTimeout(() => {
                         console.log(`⏰ Grace period expired for ${playerId}, removing from room`);
 
@@ -296,7 +298,7 @@ export class WebSocketService {
 
                         // Clean up the timeout reference
                         this.disconnectTimeouts.delete(playerId);
-                    }, 30000); // 30 seconds grace period
+                    }, GRACE_PERIOD_TIMEOUT); // 60 seconds grace period
 
                     // Store the timeout so we can cancel it if player reconnects
                     this.disconnectTimeouts.set(playerId, timeout);
