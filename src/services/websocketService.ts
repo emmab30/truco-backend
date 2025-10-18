@@ -223,6 +223,15 @@ export class WebSocketService {
             if (connection === ws) {
                 console.log(`👋 Player disconnected: ${playerId}`);
                 console.log(`🔍 Connection state before removal: ${ws.readyState}`);
+
+                // Check if this is still the current connection for this player
+                // If not, it means the player already reconnected with a new connection
+                const currentConnection = this.playerConnections.get(playerId);
+                if (currentConnection !== ws) {
+                    console.log(`⚠️ Ignoring disconnect for old connection (player already reconnected)`);
+                    return;
+                }
+
                 this.playerConnections.delete(playerId);
 
                 // Get the room the player was in
