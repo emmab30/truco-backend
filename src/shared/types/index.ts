@@ -52,6 +52,13 @@ export interface Room {
     gameType: GameType;
     hasAI?: boolean;
     aiDifficulty?: "easy" | "medium" | "hard";
+    players?: Array<{
+        id: string;
+        name: string;
+        photo?: string;
+        team: number;
+        points: number;
+    }>;
 
     // Internal game state (server-side only, not sent to clients)
     // Clients receive game updates via GAME_UPDATE event with BaseGame structure
