@@ -54,7 +54,8 @@ export class WebSocketService {
 
         // Handle PING without logging to reduce noise
         if (type === "PING") {
-            if (ws.readyState === 1) { // WebSocket.OPEN
+            if (ws.readyState === 1) {
+                // WebSocket.OPEN
                 console.log(`🏓 Received PING from player ${playerId}, sending PONG!`);
                 ws.send(JSON.stringify({ type: "PONG" }));
             }
@@ -71,6 +72,13 @@ export class WebSocketService {
                 console.log(`✅ Player reconnected, canceling disconnect: ${playerId}`);
                 clearTimeout(pendingTimeout);
                 this.disconnectTimeouts.delete(playerId);
+            }
+
+            // REGISTER_PLAYER does not have a roomId, so we need to add the connection to the room
+            const room = this.roomService.getRoomByPlayer(playerId);
+            if (room) {
+                this.roomService.addConnection(room.id, playerId, ws);
+                console.log(`🔗 Re-added connection for player ${playerId} to room ${room.id} after reconnection`);
             }
 
             // Check if this player already has a connection (reconnection case)
@@ -233,7 +241,7 @@ export class WebSocketService {
                     // Schedule delayed removal with 30 second grace period
                     const timeout = setTimeout(() => {
                         console.log(`⏰ Grace period expired for ${playerId}, removing from room`);
-                        
+
                         // Check if player is still in room (might have been removed manually)
                         const currentRoom = this.roomService.getRoomByPlayer(playerId);
                         if (currentRoom && currentRoom.id === roomId) {
@@ -315,7 +323,7 @@ export class WebSocketService {
         } = data;
 
         try {
-            console.log(`🔵 Creating room - Player: ${playerName} (${playerId}), Photo: ${playerPhoto || 'none'}`);
+            console.log(`🔵 Creating room - Player: ${playerName} (${playerId}), Photo: ${playerPhoto || "none"}`);
             const room = this.roomService.createRoom(roomName, playerName, playerId, maxPlayers, isPrivate, password, maxScore, gameType, hasAI, aiDifficulty, playerPhoto);
 
             // Store player connection
@@ -413,7 +421,7 @@ export class WebSocketService {
         const { playerName, playerId, password, playerPhoto } = data;
 
         try {
-            console.log(`🔵 Joining room - Player: ${playerName} (${playerId}), Photo: ${playerPhoto || 'none'}`);
+            console.log(`🔵 Joining room - Player: ${playerName} (${playerId}), Photo: ${playerPhoto || "none"}`);
             const room = this.roomService.joinRoom(roomId, playerName, playerId, password, playerPhoto);
             if (!room) {
                 this.sendError(ws, "Error joining room (room full, not found, or incorrect password)");
@@ -526,9 +534,9 @@ export class WebSocketService {
             if (!wasAlreadyInRoom && room.game) {
                 // This is a new player joining via direct link
                 const joinedPlayer = room.game.players.find((p: any) => p.id === playerId);
-                
-                console.log(`🔵 Player joining room via deep link - ID: ${playerId}, Name: ${joinedPlayer?.name}, Photo: ${joinedPlayer?.photo || 'none'}`);
-                
+
+                console.log(`🔵 Player joining room via deep link - ID: ${playerId}, Name: ${joinedPlayer?.name}, Photo: ${joinedPlayer?.photo || "none"}`);
+
                 this.broadcastToRoom(roomId, {
                     type: WEBSOCKET_MESSAGE_TYPES.PLAYER_JOINED,
                     data: {
