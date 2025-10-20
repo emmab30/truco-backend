@@ -307,11 +307,19 @@ export class TrucoAI {
         const currentHand = game.currentHand;
         if (!currentHand) return false;
 
+        // IMPORTANTE: En partidas de 4 o 6 jugadores (equipos), NUNCA irse al mazo
+        // porque tienes compañeros que pueden ayudar
+        const isTeamGame = game.players.length >= 4;
+        if (isTeamGame) {
+            console.log(`🤖 IA ${this.playerId} - Partida en equipo, NO me voy al mazo`);
+            return false;
+        }
+
         const hasOnlyBadCards = this.hasOnlyBadCards(player.cards);
         const opponentLeading = this.isOpponentLeading(game);
         const pointsDifference = this.getPointsDifference(game, player);
 
-        // Si hay truco activo y tengo una carta perdedora, ir al mazo
+        // Si hay truco activo y tengo una carta perdedora, ir al mazo (solo en 1v1)
         const trucoIsActive = currentHand.trucoState?.isActive || currentHand.trucoState?.accepted;
         if (trucoIsActive) {
             const currentRound = currentHand.rounds[currentHand.currentRound];

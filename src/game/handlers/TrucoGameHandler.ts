@@ -241,34 +241,15 @@ export class TrucoGameHandler extends AbstractGameHandler {
             const isResolved = data.response === "quiero" && envidoState?.callerMessage && envidoState?.responderMessage;
 
             if (isResolved) {
-                // Send speech bubbles for both players with delays
-                const caller = updatedGame.players.find((p) => p.id === envidoState.currentCaller);
                 const responder = updatedGame.players.find((p) => p.id === playerId);
-
-                if (caller && responder) {
-                    // Send "Quiero" first
+                
+                // Send "Quiero" first
+                if (responder) {
                     this.sendSpeechBubble(roomId, playerId, "Quiero", responder.name, 5);
-
-                    // Determine who is mano and send speech bubbles in correct order
-                    // Wait longer to avoid overlap with "Quiero" speech bubble
-                    if (caller.isMano) {
-                        // Mano (caller) announces first
-                        setTimeout(() => {
-                            this.sendSpeechBubble(roomId, caller.id, envidoState.callerMessage!, caller.name, 10);
-                        }, 1000);
-                        setTimeout(() => {
-                            this.sendSpeechBubble(roomId, responder.id, envidoState.responderMessage!, responder.name, 10);
-                        }, 2000);
-                    } else {
-                        // Mano (responder) announces first
-                        setTimeout(() => {
-                            this.sendSpeechBubble(roomId, responder.id, envidoState.responderMessage!, responder.name, 10);
-                        }, 1000);
-                        setTimeout(() => {
-                            this.sendSpeechBubble(roomId, caller.id, envidoState.callerMessage!, caller.name, 10);
-                        }, 2000);
-                    }
                 }
+
+                // Send announcements for all players in order (mano first)
+                this.sendEnvidoAnnouncementsBubbles(roomId, envidoState, updatedGame);
             }
 
             this.wsService.broadcastToRoom(roomId, {
@@ -487,6 +468,45 @@ export class TrucoGameHandler extends AbstractGameHandler {
     }
 
     /**
+     * Send envido announcement speech bubbles for all players in order
+     */
+    private sendEnvidoAnnouncementsBubbles(roomId: string, envidoState: any, updatedGame: any): void {
+        if (!envidoState.announcementOrder || !envidoState.pointsAnnounced) {
+            // Fallback to legacy 2-player mode
+            return;
+        }
+
+        const announcementOrder = envidoState.announcementOrder;
+        const pointsAnnounced = envidoState.pointsAnnounced;
+        
+        let currentHighest = 0;
+        let delay = 1000; // Start 1 second after "Quiero"
+
+        announcementOrder.forEach((playerId: string, index: number) => {
+            const player = updatedGame.players.find((p: any) => p.id === playerId);
+            if (!player) return;
+
+            const points = pointsAnnounced.get(playerId) || 0;
+            let message: string;
+
+            if (points > currentHighest) {
+                // This player has higher points, announces them
+                message = index === 0 ? `¡Tengo ${points}!` : `¡${points} son mejores!`;
+                currentHighest = points;
+            } else {
+                // This player doesn't beat current highest
+                message = "Son buenas";
+            }
+
+            setTimeout(() => {
+                this.sendSpeechBubble(roomId, playerId, message, player.name, 10);
+            }, delay);
+
+            delay += 1000; // 1 second between each announcement
+        });
+    }
+
+    /**
      * Send speech bubble for AI actions
      */
     private sendAISpeechBubble(roomId: string, aiPlayer: any, aiDecision: any): void {
@@ -586,13 +606,19 @@ export class TrucoGameHandler extends AbstractGameHandler {
         let aiPlayer: any = null;
 
         if (gamePhase === "envido" && room.game.currentHand.envidoState) {
-            // For envido, find the AI that is NOT the caller (the one that needs to respond)
-            const envidoCaller = room.game.currentHand.envidoState.currentCaller;
-            aiPlayer = room.game.players.find((p: any) => this.isAIPlayer(p.id) && p.id !== envidoCaller);
+            // For envido, find the AI that is the nextResponder
+            const nextResponder = room.game.currentHand.envidoState.nextResponder;
+            if (nextResponder && this.isAIPlayer(nextResponder)) {
+                aiPlayer = room.game.players.find((p: any) => p.id === nextResponder);
+                console.log(`🤖 Envido phase: nextResponder is ${nextResponder}, isAI: ${!!aiPlayer}`);
+            }
         } else if (gamePhase === "truco" && room.game.currentHand.trucoState) {
-            // For truco, find the AI that is NOT the caller (the one that needs to respond)
-            const trucoCaller = room.game.currentHand.trucoState.currentCaller;
-            aiPlayer = room.game.players.find((p: any) => this.isAIPlayer(p.id) && p.id !== trucoCaller);
+            // For truco, find the AI that is the nextResponder
+            const nextResponder = room.game.currentHand.trucoState.nextResponder;
+            if (nextResponder && this.isAIPlayer(nextResponder)) {
+                aiPlayer = room.game.players.find((p: any) => p.id === nextResponder);
+                console.log(`🤖 Truco phase: nextResponder is ${nextResponder}, isAI: ${!!aiPlayer}`);
+            }
         } else if (gamePhase === "playing") {
             // For playing phase, check if current player is AI
             const currentPlayer = room.game.players.find((p: any) => p.id === currentPlayerId);
@@ -651,30 +677,8 @@ export class TrucoGameHandler extends AbstractGameHandler {
             if (aiDecision?.type === "respond" && aiDecision?.response === "quiero" && freshGame.phase === "envido") {
                 const envidoState = updatedGame.currentHand?.envidoState;
                 if (envidoState?.callerMessage && envidoState?.responderMessage) {
-                    const caller = updatedGame.players.find((p: any) => p.id === envidoState.currentCaller);
-                    const responder = updatedGame.players.find((p: any) => p.id === aiPlayer.id);
-
-                    if (caller && responder) {
-                        // Determine who is mano and send speech bubbles in correct order
-                        // Wait longer to avoid overlap with "¡Quiero!" speech bubble
-                        if (caller.isMano) {
-                            // Mano (caller) announces first
-                            setTimeout(() => {
-                                this.sendSpeechBubble(roomId, caller.id, envidoState.callerMessage!, caller.name, 10);
-                            }, 1000);
-                            setTimeout(() => {
-                                this.sendSpeechBubble(roomId, responder.id, envidoState.responderMessage!, responder.name, 10);
-                            }, 2000);
-                        } else {
-                            // Mano (responder) announces first
-                            setTimeout(() => {
-                                this.sendSpeechBubble(roomId, responder.id, envidoState.responderMessage!, responder.name, 10);
-                            }, 1000);
-                            setTimeout(() => {
-                                this.sendSpeechBubble(roomId, caller.id, envidoState.callerMessage!, caller.name, 10);
-                            }, 2000);
-                        }
-                    }
+                    // Send announcements for all players in order (mano first)
+                    this.sendEnvidoAnnouncementsBubbles(roomId, envidoState, updatedGame);
                 }
             }
 

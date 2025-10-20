@@ -41,10 +41,19 @@ export interface EnvidoState {
     currentCall: EnvidoCall | null;
     currentCaller: string | null;
     originalCaller: string | null;
+    nextResponder: string | null; // Quien debe responder al Envido
     responses: Map<string, EnvidoResponse>;
     playedLevels: EnvidoCall[];
     envidoCount: number; // Contador de cuántos "Envido" se han cantado (máximo 2)
     winner?: Team;
+    
+    // Para el canto de puntos de envido en orden
+    pointsAnnounced?: Map<string, number>; // Puntos anunciados por cada jugador
+    announcementOrder?: string[]; // Orden en el que los jugadores deben cantar (mano primero)
+    currentAnnouncer?: string | null; // Jugador que debe anunciar puntos ahora
+    highestPoints?: number; // Puntos más altos anunciados hasta ahora
+    highestPointsPlayer?: string | null; // Jugador con los puntos más altos
+    
     callerPoints?: number;
     responderPoints?: number;
     callerMessage?: string;
@@ -55,6 +64,8 @@ export interface TrucoState {
     isActive: boolean;
     currentCall: TrucoCall | null;
     currentCaller: string | null;
+    originalCaller: string | null; // Quien cantó el Truco original (para escaladas)
+    nextResponder: string | null; // Quien debe responder al Truco/Retruco/Vale Cuatro
     responses: Map<string, TrucoResponse>;
     accepted?: boolean;
     winner?: Team;

@@ -73,8 +73,8 @@ export function getAvailableActions(game: Game, playerId: string): Action[] {
                         label: "Falta Envido",
                         priority: ACTION_PRIORITIES[ActionType.FALTA_ENVIDO],
                     });
-                } else if (envidoState.isActive && envidoState.currentCaller !== playerId) {
-                    // Envido is active and it's not my call, can respond or raise
+                } else if (envidoState.isActive && envidoState.nextResponder === playerId) {
+                    // Envido is active and this player is the designated responder, can respond or raise
                     actions.push({
                         type: ActionType.QUIERO,
                         label: "Quiero",
@@ -142,8 +142,8 @@ export function getAvailableActions(game: Game, playerId: string): Action[] {
                     priority: ACTION_PRIORITIES[ActionType.TRUCO],
                 });
             } else if (trucoState?.isActive) {
-                // Truco is active (waiting for response), only the team that didn't call truco can respond/raise
-                if (trucoState.currentCaller !== playerId) {
+                // Truco is active (waiting for response), only the designated responder can respond/raise
+                if (trucoState.nextResponder === playerId) {
                     const trucoCall = trucoState.currentCall;
                     if (trucoCall === TrucoCall.TRUCO) {
                         actions.push({
@@ -186,8 +186,10 @@ export function getAvailableActions(game: Game, playerId: string): Action[] {
             }
         }
     } else if (game.phase === GamePhase.ENVIDO) {
-        // Only the player who didn't make the last call can respond
-        if (envidoState?.currentCaller !== playerId) {
+        // Only the designated nextResponder can respond to envido
+        const canRespond = envidoState?.nextResponder === playerId;
+        
+        if (canRespond) {
             actions.push({
                 type: ActionType.QUIERO,
                 label: "Quiero",
@@ -269,8 +271,10 @@ export function getAvailableActions(game: Game, playerId: string): Action[] {
             }
         }
     } else if (game.phase === GamePhase.TRUCO) {
-        // Only the player who didn't call truco can respond
-        if (trucoState?.currentCaller !== playerId) {
+        // Only the designated nextResponder can respond to truco
+        const canRespond = trucoState?.nextResponder === playerId;
+        
+        if (canRespond) {
             // In first round, can call envido instead of responding to truco
             const isFirstRound = currentRound.number === 1;
             const envidoWasResolved = envidoState?.winner !== undefined;

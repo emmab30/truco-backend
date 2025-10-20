@@ -294,6 +294,7 @@ export function dealNewHand(game: Game): Game {
                 currentCall: null,
                 currentCaller: null,
                 originalCaller: null,
+                nextResponder: null,
                 responses: new Map(),
                 playedLevels: [],
                 envidoCount: 0,
@@ -302,6 +303,8 @@ export function dealNewHand(game: Game): Game {
                 isActive: false,
                 currentCall: null,
                 currentCaller: null,
+                originalCaller: null,
+                nextResponder: null,
                 responses: new Map(),
             },
         },
@@ -529,6 +532,7 @@ export function callEnvido(game: Game, playerId: string, call: EnvidoCall): Game
         currentCall: null,
         currentCaller: null,
         originalCaller: null,
+        nextResponder: null,
         responses: new Map(),
         playedLevels: [],
         envidoCount: 0,
@@ -542,6 +546,8 @@ export function callEnvido(game: Game, playerId: string, call: EnvidoCall): Game
             isActive: false,
             currentCall: null,
             currentCaller: null,
+            originalCaller: null,
+            nextResponder: null,
             responses: new Map(),
         };
     }
@@ -557,6 +563,10 @@ export function callEnvido(game: Game, playerId: string, call: EnvidoCall): Game
         // Increment envido count if the new call is ENVIDO
         const newEnvidoCount = call === EnvidoCall.ENVIDO ? currentEnvidoState.envidoCount + 1 : currentEnvidoState.envidoCount;
 
+        // When raising, the original caller must respond
+        const nextResponder = currentEnvidoState.originalCaller;
+        console.log(`🎲 callEnvido: Raise to ${newCall}, originalCaller ${nextResponder} must respond`);
+
         return {
             ...game,
             phase: GamePhase.ENVIDO,
@@ -568,6 +578,7 @@ export function callEnvido(game: Game, playerId: string, call: EnvidoCall): Game
                     currentCall: newCall,
                     currentCaller: playerId,
                     originalCaller: currentEnvidoState.originalCaller, // Keep original caller
+                    nextResponder: nextResponder, // Original caller must respond
                     responses: new Map(), // Reset responses for new call
                     playedLevels: newPlayedLevels,
                     envidoCount: newEnvidoCount,
@@ -576,8 +587,12 @@ export function callEnvido(game: Game, playerId: string, call: EnvidoCall): Game
         };
     }
 
-    // New envido call
+    // New envido call - the "pie" of the opposite team responds
     const initialEnvidoCount = call === EnvidoCall.ENVIDO ? 1 : 0;
+    const piePlayer = getPieOfOppositeTeam(game.players, playerId);
+    const nextResponder = piePlayer?.id || null;
+    
+    console.log(`🎲 callEnvido: New envido call ${call}, pie ${nextResponder} from opposite team must respond`);
     
     return {
         ...game,
@@ -591,6 +606,7 @@ export function callEnvido(game: Game, playerId: string, call: EnvidoCall): Game
                 currentCall: call,
                 currentCaller: playerId,
                 originalCaller: playerId, // Set original caller for first call
+                nextResponder: nextResponder, // Next player from opposite team responds
                 responses: new Map(),
                 playedLevels: [call], // Add first level
                 envidoCount: initialEnvidoCount,
@@ -631,6 +647,7 @@ export function respondEnvido(game: Game, playerId: string, response: EnvidoResp
         currentCall: null,
         currentCaller: null,
         originalCaller: null,
+        nextResponder: null,
         responses: new Map(),
         playedLevels: [],
         envidoCount: 0,
@@ -675,18 +692,32 @@ export function respondEnvido(game: Game, playerId: string, response: EnvidoResp
 
         if (!caller || !responder || !callerId) return game;
 
-        // Calculate envido points using ORIGINAL cards (not remaining cards)
-        const callerOriginalCards = currentHand.playerOriginalCards.get(callerId) || caller.cards;
-        const responderOriginalCards = currentHand.playerOriginalCards.get(playerId) || responder.cards;
-        
-        const callerPoints = calculateEnvidoPoints(callerOriginalCards);
-        const responderPoints = calculateEnvidoPoints(responderOriginalCards);
+        // Calculate envido points for ALL players using ORIGINAL cards
+        const playerPoints = new Map<string, number>();
+        game.players.forEach((player) => {
+            const originalCards = currentHand.playerOriginalCards.get(player.id) || player.cards;
+            const points = calculateEnvidoPoints(originalCards);
+            playerPoints.set(player.id, points);
+        });
 
-        // Determine winner (in case of tie, mano wins)
-        const callerIsMano = caller.isMano;
-        const callerWins = callerPoints > responderPoints || (callerPoints === responderPoints && callerIsMano);
-        const winner = callerWins ? caller : responder;
-        const winnerTeam = winner.team;
+        // Get announcement order (mano first)
+        const announcementOrder = getEnvidoAnnouncementOrder(game.players);
+        
+        // Find the winner: highest points, or mano in case of tie
+        let highestPoints = 0;
+        let winningPlayerId: string | null = null;
+
+        announcementOrder.forEach((pId) => {
+            const points = playerPoints.get(pId) || 0;
+            
+            if (!winningPlayerId || points > highestPoints) {
+                highestPoints = points;
+                winningPlayerId = pId;
+            }
+        });
+
+        const winner = game.players.find((p) => p.id === winningPlayerId);
+        const winnerTeam = winner?.team || Team.TEAM_1;
 
         // Calculate total points based on all envido levels played
         let pointsToAdd = 0;
@@ -711,7 +742,10 @@ export function respondEnvido(game: Game, playerId: string, response: EnvidoResp
         // Calculate points based on counts
         if (faltaEnvidoCount > 0) {
             // For falta envido, calculate points needed to reach maxScore
-            const loser = callerWins ? responder : caller;
+            // Find the losing team's highest-scoring player
+            const losingTeam = winnerTeam === Team.TEAM_1 ? Team.TEAM_2 : Team.TEAM_1;
+            const losingPlayers = game.players.filter((p) => p.team === losingTeam);
+            const loser = losingPlayers[0] || responder; // Fallback to responder
             const maxScore = game.gameConfig.maxScore;
             pointsToAdd = Math.min(maxScore - loser.points, maxScore);
         } else {
@@ -720,6 +754,18 @@ export function respondEnvido(game: Game, playerId: string, response: EnvidoResp
         }
 
         const updatedPlayers = game.players.map((p) => (p.team === winnerTeam ? { ...p, points: p.points + pointsToAdd } : p));
+
+        // Get caller and responder points
+        const callerPoints = playerPoints.get(callerId) || 0;
+        const responderPoints = playerPoints.get(playerId) || 0;
+        const callerWins = winningPlayerId === callerId;
+
+        // Generate messages for ALL players in announcement order
+        const pointsAnnounced = new Map<string, number>();
+        announcementOrder.forEach((pId) => {
+            const points = playerPoints.get(pId) || 0;
+            pointsAnnounced.set(pId, points);
+        });
 
         // Mano always announces first
         const manoIsCaller = caller.isMano;
@@ -746,6 +792,10 @@ export function respondEnvido(game: Game, playerId: string, response: EnvidoResp
                     ...currentEnvidoState,
                     isActive: false,
                     winner: winnerTeam,
+                    pointsAnnounced,
+                    announcementOrder,
+                    highestPoints,
+                    highestPointsPlayer: winningPlayerId,
                     responses: new Map([...currentEnvidoState.responses, [playerId, response]]),
                     // Store points for speech bubbles
                     callerPoints: callerPoints,
@@ -791,6 +841,7 @@ export function callTruco(game: Game, playerId: string, call: TrucoCall): Game {
         currentCall: null,
         currentCaller: null,
         originalCaller: null,
+        nextResponder: null,
         responses: new Map(),
     };
 
@@ -799,10 +850,31 @@ export function callTruco(game: Game, playerId: string, call: TrucoCall): Game {
 
     console.log(`🎲 callTruco: ${call}, isEscalation: ${isEscalation}, previous accepted: ${currentTrucoState.accepted}`);
 
+    // Determine who should respond:
+    // - If this is an escalation (retruco/vale-cuatro), the ORIGINAL caller must respond
+    // - If this is a new truco, the "pie" (last player) of the opposite team responds
+    let nextResponder: string | null = null;
+    let originalCaller: string | null = null;
+
+    if (isEscalation && currentTrucoState.originalCaller) {
+        // This is an escalation - the original caller must respond
+        nextResponder = currentTrucoState.originalCaller;
+        originalCaller = currentTrucoState.originalCaller;
+        console.log(`🎲 callTruco: Escalation detected, originalCaller ${originalCaller} must respond`);
+    } else {
+        // This is a new truco - the "pie" of the opposite team responds
+        const piePlayer = getPieOfOppositeTeam(game.players, playerId);
+        nextResponder = piePlayer?.id || null;
+        originalCaller = playerId; // This player is the original caller
+        console.log(`🎲 callTruco: New truco, pie ${nextResponder} from opposite team must respond`);
+    }
+
     const newTrucoState: any = {
         isActive: true,
         currentCall: call,
         currentCaller: playerId,
+        originalCaller: originalCaller,
+        nextResponder: nextResponder,
         responses: new Map(),
     };
 
@@ -887,12 +959,20 @@ export function respondTruco(game: Game, playerId: string, response: TrucoRespon
 
     // Handle escalation calls (retruco, vale-cuatro)
     if (response === TrucoResponse.RETRUCO || response === TrucoResponse.VALE_CUATRO) {
+        // When escalating, the originalCaller (who started the truco) must respond
+        const originalCaller = currentTrucoState.originalCaller || currentTrucoState.currentCaller;
+        
+        console.log(`🎲 respondTruco: Escalation to ${response}, originalCaller=${originalCaller} must respond`);
+        
         const updatedTrucoState = {
             ...currentTrucoState,
             isActive: true,
             currentCall: response === TrucoResponse.RETRUCO ? TrucoCall.RETRUCO : TrucoCall.VALE_CUATRO,
             currentCaller: playerId,
+            originalCaller: originalCaller, // Keep the original caller
+            nextResponder: originalCaller, // Original caller must respond to escalation
             responses: new Map(),
+            accepted: true, // Mark as accepted since we're escalating
         };
 
         return {
@@ -1007,5 +1087,115 @@ export function goToMazo(game: Game, playerId: string): Game {
         },
         phase: GamePhase.HAND_END,
     };
+}
+
+// ============================================================================
+// HELPER FUNCTIONS FOR TURN MANAGEMENT
+// ============================================================================
+
+/**
+ * Get the next player from the opposite team
+ * Used for Truco/Envido responses to ensure only the correct player can respond
+ * @param players - Array of players
+ * @param currentPlayerId - Current player ID
+ * @returns Next player from opposite team, or null if not found
+ */
+export function getNextPlayerFromOppositeTeam(players: Player[], currentPlayerId: string): Player | null {
+    const currentPlayerIndex = players.findIndex((p) => p.id === currentPlayerId);
+    if (currentPlayerIndex === -1) return null;
+
+    const currentPlayer = players[currentPlayerIndex];
+    if (!currentPlayer) return null;
+
+    const currentTeam = currentPlayer.team;
+
+    // Start from the next player in turn order
+    for (let i = 1; i < players.length; i++) {
+        const nextIndex = (currentPlayerIndex + i) % players.length;
+        const nextPlayer = players[nextIndex];
+        
+        if (nextPlayer && nextPlayer.team !== currentTeam && nextPlayer.isActive && !nextPlayer.wentToMazo) {
+            return nextPlayer;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Get the "pie" (last player) of the opposite team
+ * The "pie" is the team captain who responds to Truco/Envido calls
+ * In Truco rules, the "pie" is the LAST player of the opposite team to play in turn order
+ * @param players - Array of players
+ * @param currentPlayerId - Current player ID (the caller)
+ * @returns The "pie" of the opposite team, or null if not found
+ */
+export function getPieOfOppositeTeam(players: Player[], currentPlayerId: string): Player | null {
+    const currentPlayer = players.find((p) => p.id === currentPlayerId);
+    if (!currentPlayer) return null;
+
+    const currentTeam = currentPlayer.team;
+    
+    // Find the "mano" (player with isMano = true) to determine turn order
+    const manoIndex = players.findIndex((p) => p.isMano);
+    if (manoIndex === -1) return null;
+
+    // Build turn order starting from mano
+    const turnOrder: Player[] = [];
+    for (let i = 0; i < players.length; i++) {
+        const index = (manoIndex + i) % players.length;
+        const player = players[index];
+        if (player && player.isActive && !player.wentToMazo) {
+            turnOrder.push(player);
+        }
+    }
+
+    // Find the LAST player from the opposite team in turn order
+    let piePlayer: Player | null = null;
+    for (let i = turnOrder.length - 1; i >= 0; i--) {
+        const player = turnOrder[i];
+        if (player && player.team !== currentTeam) {
+            piePlayer = player;
+            break;
+        }
+    }
+
+    console.log(`🎲 getPieOfOppositeTeam: currentPlayer=${currentPlayer.name}, currentTeam=${currentTeam}, pie=${piePlayer?.name}`);
+    return piePlayer;
+}
+
+/**
+ * Get a player by ID from the players array
+ * @param players - Array of players
+ * @param playerId - Player ID to find
+ * @returns Player or null if not found
+ */
+export function getPlayerById(players: Player[], playerId: string | null): Player | null {
+    if (!playerId) return null;
+    return players.find((p) => p.id === playerId) || null;
+}
+
+/**
+ * Get the announcement order for envido points
+ * The "mano" (first player) always announces first, then players in turn order
+ * @param players - Array of players
+ * @returns Array of player IDs in announcement order
+ */
+export function getEnvidoAnnouncementOrder(players: Player[]): string[] {
+    // Find the "mano" (player with isMano = true)
+    const manoIndex = players.findIndex((p) => p.isMano);
+    if (manoIndex === -1) return players.map((p) => p.id);
+
+    // Create order starting from mano
+    const order: string[] = [];
+    for (let i = 0; i < players.length; i++) {
+        const index = (manoIndex + i) % players.length;
+        const player = players[index];
+        if (player && player.isActive && !player.wentToMazo) {
+            order.push(player.id);
+        }
+    }
+
+    return order;
 }
 
