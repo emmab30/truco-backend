@@ -38,6 +38,7 @@ export class TrucoGameHandler extends AbstractGameHandler {
             WEBSOCKET_MESSAGE_TYPES.CALL_TRUCO,
             WEBSOCKET_MESSAGE_TYPES.RESPOND_TRUCO,
             WEBSOCKET_MESSAGE_TYPES.GO_TO_MAZO,
+            WEBSOCKET_MESSAGE_TYPES.SEND_TEAM_MESSAGE,
         ];
     }
 
@@ -81,6 +82,10 @@ export class TrucoGameHandler extends AbstractGameHandler {
 
                 case WEBSOCKET_MESSAGE_TYPES.GO_TO_MAZO:
                     this.handleGoToMazo(playerId, roomId);
+                    break;
+
+                case WEBSOCKET_MESSAGE_TYPES.SEND_TEAM_MESSAGE:
+                    this.handleSendTeamMessage(playerId, roomId, data);
                     break;
 
                 default:
@@ -242,7 +247,7 @@ export class TrucoGameHandler extends AbstractGameHandler {
 
             if (isResolved) {
                 const responder = updatedGame.players.find((p) => p.id === playerId);
-                
+
                 // Send "Quiero" first
                 if (responder) {
                     this.sendSpeechBubble(roomId, playerId, "Quiero", responder.name, 5);
@@ -381,6 +386,52 @@ export class TrucoGameHandler extends AbstractGameHandler {
         }
     }
 
+    private handleSendTeamMessage(playerId: string, roomId: string, data?: any): void {
+        if (!data?.messageId) {
+            this.sendError(this.getPlayerConnection(playerId), "Message ID is required");
+            return;
+        }
+
+        try {
+            const room = this.roomService.getRoom(roomId);
+            if (!room) return;
+
+            const game = room.game;
+            const player = game.players.find((p: any) => p.id === playerId);
+
+            if (!player) {
+                console.error("Player not found");
+                return;
+            }
+
+            // Find the message definition
+            const { TEAM_MESSAGES } = require("@/game/truco/constants");
+            const teamMessage = TEAM_MESSAGES.find((msg: any) => msg.id === data.messageId);
+
+            if (!teamMessage) {
+                console.error("Team message not found");
+                return;
+            }
+
+            // Get teammate IDs (same team as player)
+            const teammateIds = game.players.filter((p: any) => p.team === player.team).map((p: any) => p.id);
+
+            // Broadcast to teammates only
+            this.wsService.broadcastToPlayerIds(roomId, teammateIds, {
+                type: WEBSOCKET_MESSAGE_TYPES.SPEECH_BUBBLE,
+                data: {
+                    playerId: playerId,
+                    playerName: player.name,
+                    messageId: teamMessage.id,
+                    message: `${teamMessage.icon} ${teamMessage.message}`,
+                    icon: teamMessage.icon,
+                },
+            });
+        } catch (error) {
+            console.error("Error sending team message:", error);
+        }
+    }
+
     // ============================================================================
     // GAME PROGRESSION
     // ============================================================================
@@ -426,7 +477,6 @@ export class TrucoGameHandler extends AbstractGameHandler {
             }, GAME_DELAY_NEW_HAND); // 5 seconds delay
         }
     }
-
 
     private getPlayerConnection(_playerId: string): any {
         // This would need to be injected or accessed through a service
@@ -478,7 +528,7 @@ export class TrucoGameHandler extends AbstractGameHandler {
 
         const announcementOrder = envidoState.announcementOrder;
         const pointsAnnounced = envidoState.pointsAnnounced;
-        
+
         let currentHighest = 0;
         let delay = 1000; // Start 1 second after "Quiero"
 
@@ -511,46 +561,46 @@ export class TrucoGameHandler extends AbstractGameHandler {
      */
     private sendAISpeechBubble(roomId: string, aiPlayer: any, aiDecision: any): void {
         let message = "";
-        
+
         switch (aiDecision.type) {
             case "envido":
                 const envidoLabels: Record<string, string> = {
-                    "envido": "Envido",
+                    envido: "Envido",
                     "real-envido": "Real Envido",
                     "falta-envido": "Falta Envido",
                 };
                 message = envidoLabels[aiDecision.envidoCall] || aiDecision.envidoCall;
                 break;
-                
+
             case "truco":
                 const trucoLabels: Record<string, string> = {
-                    "truco": "Truco",
-                    "retruco": "Re Truco",
+                    truco: "Truco",
+                    retruco: "Re Truco",
                     "vale-cuatro": "Vale Cuatro",
                 };
                 message = trucoLabels[aiDecision.trucoCall] || aiDecision.trucoCall;
                 break;
-                
+
             case "respond":
                 const responseLabels: Record<string, string> = {
-                    "quiero": "Quiero",
+                    quiero: "Quiero",
                     "no-quiero": "No quiero",
                 };
                 message = responseLabels[aiDecision.response] || aiDecision.response;
                 break;
-                
+
             case "mazo":
                 message = "Me voy al mazo";
                 break;
-                
+
             case "play":
                 // Don't send speech bubble for playing cards
                 return;
-                
+
             default:
                 return;
         }
-        
+
         if (message) {
             this.sendSpeechBubble(roomId, aiPlayer.id, message, aiPlayer.name, 5);
         }
@@ -653,7 +703,7 @@ export class TrucoGameHandler extends AbstractGameHandler {
             // Get AI decision first (before executing) to send speech bubble
             const ai = this.aiService.getAI(aiPlayer.id);
             const aiDecision = ai?.makeDecision(freshGame);
-            
+
             if (!aiDecision) {
                 console.log(`❌ AI could not make a decision`);
                 return;

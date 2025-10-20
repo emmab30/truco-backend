@@ -763,6 +763,22 @@ export class WebSocketService {
         console.log(`📡 Room broadcast complete: ${sentCount} sent, ${failedCount} failed`);
     }
 
+    public broadcastToPlayerIds(roomId: string, playerIds: string[], message: any): void {
+        const connections = this.roomService.getRoomConnections(roomId);
+        connections.forEach((ws, playerId) => {
+            if (playerIds.includes(playerId)) {
+                if (ws.readyState === 1) {
+                    // WebSocket.OPEN
+                    try {
+                        ws.send(JSON.stringify(message));
+                    } catch (error) {
+                        console.error(`❌ Error broadcasting to player ${playerId} in room ${roomId}:`, error);
+                    }
+                }
+            }
+        });
+    }
+
     /**
      * Broadcast to all players in a room EXCEPT the specified player
      */

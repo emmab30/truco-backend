@@ -129,6 +129,7 @@ export const ACTION_PRIORITIES: Record<ActionType, number> = {
     [ActionType.QUIERO]: 1,
     [ActionType.NO_QUIERO]: 2,
     [ActionType.GO_TO_MAZO]: 999,
+    [ActionType.TEAM_MESSAGE]: 1000,
 };
 
 // ============================================================================
@@ -157,3 +158,63 @@ export const CARD_TYPE_DESCRIPTIONS = {
     LOW: "Carta baja",
 } as const;
 
+// ============================================================================
+// TEAM MESSAGES - TRUCO
+// ============================================================================
+
+export interface TeamMessage {
+    id: string;
+    message: string;
+    icon: string;
+}
+
+export const TEAM_MESSAGES: TeamMessage[] = [
+    {
+        id: "que-hago",
+        message: "¿Que hago?",
+        icon: "🤔",
+    },
+    {
+        id: "pone",
+        message: "Poné",
+        icon: "💪",
+    },
+    {
+        id: "veni",
+        message: "Vení",
+        icon: "👋",
+    },
+
+    // Puntos de envido
+    {
+        id: "buena-primera",
+        message: "¡Tengo puntos!",
+        icon: "🔥",
+    },
+    {
+        id: "no-tengo-primera",
+        message: "Nada de puntos",
+        icon: "😔",
+    },
+    {
+        id: "de-las-viejas",
+        message: "¡Tengo de las viejas!",
+        icon: "😊",
+    },
+    // Información sobre cartas
+    {
+        id: "tengo-segunda",
+        message: "¡Tengo para segunda!",
+        icon: "💪",
+    },
+    {
+        id: "no-tengo-segunda",
+        message: "Van solos muchachos",
+        icon: "😔",
+    },
+    {
+        id: "canta",
+        message: "Cantá!",
+        icon: "🎤",
+    },
+];

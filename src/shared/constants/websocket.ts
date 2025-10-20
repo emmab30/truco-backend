@@ -32,6 +32,7 @@ export const WEBSOCKET_MESSAGE_TYPES = {
     CALL_TRUCO: "CALL_TRUCO",
     RESPOND_TRUCO: "RESPOND_TRUCO",
     GO_TO_MAZO: "GO_TO_MAZO",
+    SEND_TEAM_MESSAGE: "SEND_TEAM_MESSAGE",
 
     // ========== Server to Client - TRUCO SPECIFIC ==========
     GAME_STARTED: "GAME_STARTED",
@@ -62,6 +63,7 @@ export const WEBSOCKET_MESSAGE_TYPES = {
 
     // ========== Common Messages ==========
     SPEECH_BUBBLE: "SPEECH_BUBBLE",
+    TEAM_MESSAGE: "TEAM_MESSAGE",
     ERROR: "ERROR",
 } as const;
 

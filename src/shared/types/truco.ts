@@ -186,6 +186,7 @@ export enum ActionType {
     QUIERO = "quiero",
     NO_QUIERO = "noQuiero",
     GO_TO_MAZO = "goToMazo",
+    TEAM_MESSAGE = "teamMessage",
 }
 
 // ============================================================================
@@ -197,6 +198,8 @@ export interface Action {
     label: string;
     priority: number;
     color?: string;
+    icon?: string;
+    messageId?: string; // For team messages
 }
 
 export interface GameHistory {
@@ -241,6 +244,10 @@ export interface CallTrucoRequest {
 
 export interface RespondTrucoRequest {
     response: TrucoResponse;
+}
+
+export interface SendTeamMessageRequest {
+    messageId: string;
 }
 
 // ============================================================================
@@ -304,6 +311,7 @@ export interface TrucoWebSocketEvents {
     CALL_TRUCO: CallTrucoRequest;
     RESPOND_TRUCO: RespondTrucoRequest;
     GO_TO_MAZO: {};
+    SEND_TEAM_MESSAGE: SendTeamMessageRequest;
 
     // Server to Client - Truco-specific
     // Note: Room events use base Room type from shared/types
@@ -319,5 +327,6 @@ export interface TrucoWebSocketEvents {
     NEW_HAND_DEALT: {};
     NEW_ROUND_DEALT: {};
     SPEECH_BUBBLE: { playerId: string; message: string };
+    TEAM_MESSAGE: { playerId: string; messageId: string; message: string; icon: string };
 }
 

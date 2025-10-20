@@ -4,7 +4,7 @@
 // ============================================================================
 
 import { Game, Action, GamePhase, ActionType, EnvidoCall, TrucoCall, TrucoResponse } from "@/shared/types/truco";
-import { ACTION_PRIORITIES } from "@/game/truco/constants";
+import { ACTION_PRIORITIES, TEAM_MESSAGES } from "@/game/truco/constants";
 
 /**
  * Determine available actions for a player
@@ -15,6 +15,19 @@ import { ACTION_PRIORITIES } from "@/game/truco/constants";
 export function getAvailableActions(game: Game, playerId: string): Action[] {
     const actions: Action[] = [];
     const currentPlayer = game.players.find((p) => p.id === playerId);
+
+    // Add team message actions - always available if in a team game (4 or 6 players)
+    if (game.players.length >= 4) {
+        TEAM_MESSAGES.forEach((teamMsg) => {
+            actions.push({
+                type: ActionType.TEAM_MESSAGE,
+                label: teamMsg.message,
+                icon: teamMsg.icon,
+                messageId: teamMsg.id,
+                priority: ACTION_PRIORITIES[ActionType.TEAM_MESSAGE],
+            });
+        });
+    }
 
     if (!currentPlayer || !currentPlayer.isActive) {
         return actions;
@@ -28,13 +41,13 @@ export function getAvailableActions(game: Game, playerId: string): Action[] {
         return actions;
     }
 
-  // Get current round info
-  const currentHand = game.currentHand;
-  if (!currentHand) return actions;
-  
-  const currentRound = currentHand.rounds[currentHand.currentRound];
-  if (!currentRound) return actions;
-  
+    // Get current round info
+    const currentHand = game.currentHand;
+    if (!currentHand) return actions;
+
+    const currentRound = currentHand.rounds[currentHand.currentRound];
+    if (!currentRound) return actions;
+
     const trucoState = currentHand.trucoState;
     const envidoState = currentHand.envidoState;
 
@@ -85,11 +98,11 @@ export function getAvailableActions(game: Game, playerId: string): Action[] {
                         label: "No Quiero",
                         priority: ACTION_PRIORITIES[ActionType.NO_QUIERO],
                     });
-                    
+
                     // Can raise based on current call
                     const currentCall = envidoState.currentCall;
                     const envidoCount = envidoState.envidoCount || 0;
-                    
+
                     if (currentCall === EnvidoCall.ENVIDO) {
                         // Can only call another Envido if we haven't reached the limit of 2
                         if (envidoCount < 2) {
@@ -188,7 +201,7 @@ export function getAvailableActions(game: Game, playerId: string): Action[] {
     } else if (game.phase === GamePhase.ENVIDO) {
         // Only the designated nextResponder can respond to envido
         const canRespond = envidoState?.nextResponder === playerId;
-        
+
         if (canRespond) {
             actions.push({
                 type: ActionType.QUIERO,
@@ -204,7 +217,7 @@ export function getAvailableActions(game: Game, playerId: string): Action[] {
             // Can raise envido if appropriate
             const currentCall = envidoState?.currentCall;
             const originalCaller = envidoState?.originalCaller || envidoState?.currentCaller;
-            
+
             // Only the original caller can raise, others can only respond
             if (playerId === originalCaller) {
                 // Original caller can raise
@@ -229,7 +242,7 @@ export function getAvailableActions(game: Game, playerId: string): Action[] {
             } else {
                 // Non-original caller can equal or raise
                 const envidoCount = envidoState?.envidoCount || 0;
-                
+
                 if (currentCall === EnvidoCall.ENVIDO) {
                     // Can only call another Envido if we haven't reached the limit of 2
                     if (envidoCount < 2) {
@@ -273,12 +286,12 @@ export function getAvailableActions(game: Game, playerId: string): Action[] {
     } else if (game.phase === GamePhase.TRUCO) {
         // Only the designated nextResponder can respond to truco
         const canRespond = trucoState?.nextResponder === playerId;
-        
+
         if (canRespond) {
             // In first round, can call envido instead of responding to truco
             const isFirstRound = currentRound.number === 1;
             const envidoWasResolved = envidoState?.winner !== undefined;
-            
+
             if (isFirstRound && !envidoWasResolved) {
                 // Can call envido to cancel truco
                 actions.push({
@@ -297,7 +310,7 @@ export function getAvailableActions(game: Game, playerId: string): Action[] {
                     priority: ACTION_PRIORITIES[ActionType.FALTA_ENVIDO],
                 });
             }
-            
+
             // Standard truco responses
             actions.push({
                 type: ActionType.QUIERO,
@@ -387,4 +400,3 @@ export function validateAction(game: Game, playerId: string, actionType: ActionT
 
     return { valid: true };
 }
-
