@@ -53,14 +53,6 @@ export function getAvailableActions(game: Game, playerId: string): Action[] {
 
     // Check game phase and available actions
     if (game.phase === GamePhase.PLAYING) {
-        // Can always go to mazo (always last, red color)
-        actions.push({
-            type: ActionType.GO_TO_MAZO,
-            label: "Ir al Mazo",
-            priority: ACTION_PRIORITIES[ActionType.GO_TO_MAZO],
-            color: "red",
-        });
-
         // Check if player hasn't played a card yet
         if (!currentPlayer.hasPlayedCard) {
             // Envido calls (only in first round, before first card, and before truco was called/accepted)
@@ -198,6 +190,14 @@ export function getAvailableActions(game: Game, playerId: string): Action[] {
                 }
             }
         }
+
+        // Can always go to mazo (always last, red color)
+        actions.push({
+            type: ActionType.GO_TO_MAZO,
+            label: "Ir al Mazo",
+            priority: ACTION_PRIORITIES[ActionType.GO_TO_MAZO],
+            color: "red",
+        });
     } else if (game.phase === GamePhase.ENVIDO) {
         // Only the designated nextResponder can respond to envido
         const canRespond = envidoState?.nextResponder === playerId;

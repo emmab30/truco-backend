@@ -416,7 +416,7 @@ export class TrucoGameHandler extends AbstractGameHandler {
             // Get teammate IDs (same team as player)
             const teammateIds = game.players.filter((p: any) => p.team === player.team).map((p: any) => p.id);
 
-            // Broadcast to teammates only
+            /* // Broadcast to teammates only
             this.wsService.broadcastToPlayerIds(roomId, teammateIds, {
                 type: WEBSOCKET_MESSAGE_TYPES.SPEECH_BUBBLE,
                 data: {
@@ -425,6 +425,16 @@ export class TrucoGameHandler extends AbstractGameHandler {
                     messageId: teamMessage.id,
                     message: `${teamMessage.icon} ${teamMessage.message}`,
                     icon: teamMessage.icon,
+                },
+            }); */
+
+            this.wsService.broadcastToRoom(roomId, {
+                type: WEBSOCKET_MESSAGE_TYPES.SPEECH_BUBBLE,
+                data: {
+                    playerId: playerId,
+                    message: `${teamMessage.icon} ${teamMessage.message}`,
+                    playerName: player.name,
+                    priority: 10,
                 },
             });
         } catch (error) {
