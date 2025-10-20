@@ -4,6 +4,7 @@ import { AbstractGameHandler } from "./BaseGameHandler";
 import { TrucoGameService } from "@/services/trucoGameService";
 import { RoomService } from "@/services/roomService";
 import { TrucoAIService } from "@/game/truco/ai/aiService";
+import { getHandWinnerName } from "@/utils";
 
 /**
  * Truco Game Handler
@@ -414,9 +415,9 @@ export class TrucoGameHandler extends AbstractGameHandler {
             }
 
             // Get teammate IDs (same team as player)
-            const teammateIds = game.players.filter((p: any) => p.team === player.team).map((p: any) => p.id);
+            /* const teammateIds = game.players.filter((p: any) => p.team === player.team).map((p: any) => p.id);
 
-            /* // Broadcast to teammates only
+            // Broadcast to teammates only
             this.wsService.broadcastToPlayerIds(roomId, teammateIds, {
                 type: WEBSOCKET_MESSAGE_TYPES.SPEECH_BUBBLE,
                 data: {
@@ -451,12 +452,14 @@ export class TrucoGameHandler extends AbstractGameHandler {
         if (game.phase === "handEnd") {
             // Send HAND_END message immediately with winner information
             const winnerPlayer = game.players.find((p: any) => p.team === game.currentHand?.winner);
+            const handWinnerName = getHandWinnerName(game.currentHand?.winner, game.players);
+
             if (winnerPlayer) {
                 this.wsService.broadcastToRoom(roomId, {
                     type: WEBSOCKET_MESSAGE_TYPES.HAND_END,
                     data: {
                         winner: {
-                            name: winnerPlayer.name,
+                            name: handWinnerName || winnerPlayer.name,
                             team: winnerPlayer.team,
                             points: game.currentHand?.points || 0,
                         },

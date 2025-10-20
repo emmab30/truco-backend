@@ -79,11 +79,11 @@ export function getCardTypeDescription(card: Card): string {
  */
 export function getHandWinnerName(handWinner: TeamString, players: Player[]): string {
     if (handWinner === "team1") {
-        const team1Player = players.find((p) => p.team === 0);
-        return team1Player ? team1Player.name : "Equipo 1";
+        const team1Players = players.filter((p) => p.team == 0);
+        return team1Players?.length > 0 ? team1Players?.map((n) => n.name)?.join(' & ') : "Equipo 1";
     } else {
-        const team2Player = players.find((p) => p.team === 1);
-        return team2Player ? team2Player.name : "Equipo 2";
+        const team2Players = players.filter((p) => p.team == 1);
+        return team2Players?.length > 0 ? team2Players?.map((n) => n.name)?.join(' & ') : "Equipo 2";
     }
 }
 
