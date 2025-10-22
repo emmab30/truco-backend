@@ -27,16 +27,16 @@ export function getAvailableActions(game: Game, playerId: string): Action[] {
                 priority: ACTION_PRIORITIES[ActionType.TEAM_MESSAGE],
             });
         });
-    }
 
-    TEAM_SIGNS.forEach((teamSign: TeamSign) => {
-        actions.push({
-            type: ActionType.TEAM_SIGN,
-            label: teamSign.label,
-            messageId: teamSign.id,
-            priority: ACTION_PRIORITIES[ActionType.TEAM_SIGN],
+        TEAM_SIGNS.forEach((teamSign: TeamSign) => {
+            actions.push({
+                type: ActionType.TEAM_SIGN,
+                label: teamSign.label,
+                messageId: teamSign.id,
+                priority: ACTION_PRIORITIES[ActionType.TEAM_SIGN],
+            });
         });
-    });
+    }
 
     if (!currentPlayer || !currentPlayer.isActive) {
         return actions;
