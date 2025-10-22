@@ -290,7 +290,6 @@ export interface GameResponse {
 // ============================================================================
 
 export type CardString = `${number}-${Suit}`;
-export type TeamString = "team1" | "team2";
 
 export interface RoundWins {
     [playerId: string]: number;

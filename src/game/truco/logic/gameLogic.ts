@@ -435,12 +435,12 @@ export function playCard(game: Game, playerId: string, cardId: string): Game {
 
         // Check if hand is complete using the new logic
         if (isHandComplete(updatedRounds, updatedPlayers)) {
-            // Hand is complete
-            const handWinnerString = determineHandWinner(updatedRounds, updatedPlayers);
-            const handWinner = handWinnerString === "team1" ? Team.TEAM_1 : Team.TEAM_2;
             gamePhase = GamePhase.HAND_END;
+
+            // Hand is complete
+            const handWinner = determineHandWinner(updatedRounds, updatedPlayers);
             nextPlayerId = game.players[0]?.id || '';
-            const handWinnerName = getHandWinnerName(handWinnerString, updatedPlayers);
+            const handWinnerName = getHandWinnerName(handWinner, updatedPlayers);
 
             // Calculate points based on truco level accepted
             const pointsToAdd = calculateHandPoints({

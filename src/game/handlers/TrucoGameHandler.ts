@@ -487,16 +487,19 @@ export class TrucoGameHandler extends AbstractGameHandler {
         // Check if hand is complete and needs to deal new hand
         if (game.phase === "handEnd") {
             // Send HAND_END message immediately with winner information
-            const winnerPlayer = game.players.find((p: any) => p.team === game.currentHand?.winner);
-            const handWinnerName = getHandWinnerName(game.currentHand?.winner, game.players);
+            const winningTeam = game.currentHand?.winner;
+            const handWinnerName = getHandWinnerName(winningTeam, game.players);
+            
+            // Get the first player from the winning team for display purposes
+            const winnerPlayer = game.players.find((p: any) => p.team === winningTeam);
 
             if (winnerPlayer) {
                 this.wsService.broadcastToRoom(roomId, {
                     type: WEBSOCKET_MESSAGE_TYPES.HAND_END,
                     data: {
                         winner: {
-                            name: handWinnerName || winnerPlayer.name,
-                            team: winnerPlayer.team,
+                            name: handWinnerName,
+                            team: winningTeam,
                             points: game.currentHand?.points || 0,
                         },
                         game: this.trucoGameService.getGameUpdate(game.id),

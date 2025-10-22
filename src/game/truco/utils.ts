@@ -3,7 +3,7 @@
 // Funciones utilitarias específicas del juego de Truco
 // ============================================================================
 
-import { Card, CardString, Player, Round, PlayedCard, TeamString, RoundWins, TeamWins } from "@/shared/types/truco";
+import { Card, CardString, Player, Round, PlayedCard, Team, RoundWins, TeamWins } from "@/shared/types/truco";
 import { TRUCO_VALUES, ENVIDO_VALUES } from "@/game/truco/constants";
 import { DISPLAY_VALUES } from "@/game/shared/constants";
 import { generateId } from "@/shared/utils/common";
@@ -72,17 +72,17 @@ export function getCardTypeDescription(card: Card): string {
 }
 
 /**
- * Get the winner name from a team string
- * @param handWinner - Team winner string
+ * Get the winner name from a team enum
+ * @param handWinner - Team winner enum
  * @param players - Array of players
  * @returns Winner player name
  */
-export function getHandWinnerName(handWinner: TeamString, players: Player[]): string {
-    if (handWinner === "team1") {
-        const team1Players = players.filter((p) => p.team == 0);
+export function getHandWinnerName(handWinner: Team, players: Player[]): string {
+    if (handWinner === Team.TEAM_1) {
+        const team1Players = players.filter((p) => p.team === Team.TEAM_1);
         return team1Players?.length > 0 ? team1Players?.map((n) => n.name)?.join(' & ') : "Equipo 1";
     } else {
-        const team2Players = players.filter((p) => p.team == 1);
+        const team2Players = players.filter((p) => p.team === Team.TEAM_2);
         return team2Players?.length > 0 ? team2Players?.map((n) => n.name)?.join(' & ') : "Equipo 2";
     }
 }
@@ -137,9 +137,9 @@ export function determineRoundWinner(cardsPlayed: PlayedCard[]): string | null {
  * Determine the winner of a hand based on round results
  * @param rounds - Array of rounds
  * @param players - Array of players
- * @returns Winner team string
+ * @returns Winner team enum
  */
-export function determineHandWinner(rounds: Round[], players: Player[]): TeamString {
+export function determineHandWinner(rounds: Round[], players: Player[]): Team {
     const teamWins: TeamWins = {
         team1: 0,
         team2: 0,
@@ -151,7 +151,7 @@ export function determineHandWinner(rounds: Round[], players: Player[]): TeamStr
         if (round.winner) {
             const winnerPlayer = players.find((p) => p.id === round.winner);
             if (winnerPlayer) {
-                if (winnerPlayer.team === 0) {
+                if (winnerPlayer.team === Team.TEAM_1) {
                     teamWins.team1++;
                 } else {
                     teamWins.team2++;
@@ -164,13 +164,13 @@ export function determineHandWinner(rounds: Round[], players: Player[]): TeamStr
 
     // Reglas del Truco para determinar ganador:
     // 1. Si un equipo gana 2 rondas, gana la mano
-    if (teamWins.team1 >= 2) return "team1";
-    if (teamWins.team2 >= 2) return "team2";
+    if (teamWins.team1 >= 2) return Team.TEAM_1;
+    if (teamWins.team2 >= 2) return Team.TEAM_2;
 
     // 2. Si un equipo gana 1 ronda y la otra es parda, ese equipo gana
     //    (Ejemplo: gana primera, empata segunda -> gana la mano)
-    if (teamWins.team1 === 1 && teamWins.team2 === 0) return "team1";
-    if (teamWins.team2 === 1 && teamWins.team1 === 0) return "team2";
+    if (teamWins.team1 === 1 && teamWins.team2 === 0) return Team.TEAM_1;
+    if (teamWins.team2 === 1 && teamWins.team1 === 0) return Team.TEAM_2;
 
     // 3. Si primera es parda, el ganador de la segunda gana la mano
     //    Si primera y segunda son pardas, el ganador de la tercera gana
@@ -181,12 +181,12 @@ export function determineHandWinner(rounds: Round[], players: Player[]): TeamStr
         const firstRoundWinner = rounds[0]?.winner;
         if (firstRoundWinner) {
             const firstWinnerPlayer = players.find((p) => p.id === firstRoundWinner);
-            return firstWinnerPlayer?.team === 0 ? "team1" : "team2";
+            return firstWinnerPlayer?.team === Team.TEAM_1 ? Team.TEAM_1 : Team.TEAM_2;
         }
     }
 
     // Default: si todo son pardas, gana el mano (team1)
-    return "team1";
+    return Team.TEAM_1;
 }
 
 /**
