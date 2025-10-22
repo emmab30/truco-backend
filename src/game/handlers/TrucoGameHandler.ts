@@ -41,6 +41,7 @@ export class TrucoGameHandler extends AbstractGameHandler {
             WEBSOCKET_MESSAGE_TYPES.RESPOND_TRUCO,
             WEBSOCKET_MESSAGE_TYPES.GO_TO_MAZO,
             WEBSOCKET_MESSAGE_TYPES.SEND_TEAM_MESSAGE,
+            WEBSOCKET_MESSAGE_TYPES.SEND_EMOJI_REACTION,
         ];
     }
 
@@ -92,6 +93,10 @@ export class TrucoGameHandler extends AbstractGameHandler {
 
                 case WEBSOCKET_MESSAGE_TYPES.SEND_TEAM_SIGN:
                     this.handleSendTeamSign(playerId, roomId, data);
+                    break;
+
+                case WEBSOCKET_MESSAGE_TYPES.SEND_EMOJI_REACTION:
+                    this.handleSendEmojiReaction(playerId, roomId, data);
                     break;
 
                 default:
@@ -476,6 +481,44 @@ export class TrucoGameHandler extends AbstractGameHandler {
             });
         } catch (error) {
             console.error("Error sending team sign:", error);
+        }
+    }
+
+    private handleSendEmojiReaction(playerId: string, roomId: string, data?: any): void {
+        if (!data?.emoji) {
+            this.sendError(this.getPlayerConnection(playerId), "Emoji is required");
+            return;
+        }
+
+        try {
+            const room = this.roomService.getRoom(roomId);
+            if (!room) return;
+
+            const game = room.game;
+            const player = game.players.find((p: any) => p.id === playerId);
+
+            if (!player) {
+                console.error("Player not found");
+                return;
+            }
+
+            // Generate unique ID for the emoji reaction
+            const reactionId = `emoji_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+            // Broadcast emoji reaction to all players in the room
+            this.wsService.broadcastToRoom(roomId, {
+                type: WEBSOCKET_MESSAGE_TYPES.EMOJI_REACTION,
+                data: {
+                    id: reactionId,
+                    emoji: data.emoji,
+                    playerName: player.name,
+                    playerId: playerId,
+                },
+            });
+
+            console.log(`🎭 Emoji reaction sent: ${data.emoji} by ${player.name}`);
+        } catch (error) {
+            console.error("Error sending emoji reaction:", error);
         }
     }
 
