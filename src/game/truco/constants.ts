@@ -128,7 +128,8 @@ export const ACTION_PRIORITIES: Record<ActionType, number> = {
     [ActionType.VALE_CUATRO]: 6,
     [ActionType.QUIERO]: 1,
     [ActionType.NO_QUIERO]: 2,
-    [ActionType.GO_TO_MAZO]: 999,
+    [ActionType.GO_TO_MAZO]: 998,
+    [ActionType.TEAM_SIGN]: 999,
     [ActionType.TEAM_MESSAGE]: 1000,
 };
 
@@ -216,5 +217,37 @@ export const TEAM_MESSAGES: TeamMessage[] = [
         id: "canta",
         message: "Cantá!",
         icon: "🎤",
+    },
+];
+
+export interface TeamSign {
+    id: string;
+    label: string;
+}
+
+export const TEAM_SIGNS: TeamSign[] = [
+    {
+        id: "1-espadas",
+        label: "⚔️ Ancho de Espadas",
+    },
+    {
+        id: "1-bastos",
+        label: "🪵 Ancho de Bastos",
+    },
+    {
+        id: "7-espadas",
+        label: "⚔️ 7 de Espadas",
+    },
+    {
+        id: "7-oros",
+        label: "💰 7 de Oros",
+    },
+    {
+        id: "3",
+        label: "3️⃣ Tres",
+    },
+    {
+        id: "2",
+        label: "2️⃣ Dos",
     },
 ];

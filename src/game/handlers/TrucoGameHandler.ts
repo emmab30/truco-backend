@@ -5,6 +5,7 @@ import { TrucoGameService } from "@/services/trucoGameService";
 import { RoomService } from "@/services/roomService";
 import { TrucoAIService } from "@/game/truco/ai/aiService";
 import { getHandWinnerName } from "@/utils";
+import { WebSocketService } from "@/services/websocketService";
 
 /**
  * Truco Game Handler
@@ -17,7 +18,7 @@ export class TrucoGameHandler extends AbstractGameHandler {
     constructor(
         private trucoGameService: TrucoGameService,
         private roomService: RoomService,
-        private wsService: any // WebSocketService instance
+        private wsService: WebSocketService // WebSocketService instance
     ) {
         super();
         this.aiService = new TrucoAIService();
@@ -87,6 +88,10 @@ export class TrucoGameHandler extends AbstractGameHandler {
 
                 case WEBSOCKET_MESSAGE_TYPES.SEND_TEAM_MESSAGE:
                     this.handleSendTeamMessage(playerId, roomId, data);
+                    break;
+
+                case WEBSOCKET_MESSAGE_TYPES.SEND_TEAM_SIGN:
+                    this.handleSendTeamSign(playerId, roomId, data);
                     break;
 
                 default:
@@ -414,21 +419,6 @@ export class TrucoGameHandler extends AbstractGameHandler {
                 return;
             }
 
-            // Get teammate IDs (same team as player)
-            /* const teammateIds = game.players.filter((p: any) => p.team === player.team).map((p: any) => p.id);
-
-            // Broadcast to teammates only
-            this.wsService.broadcastToPlayerIds(roomId, teammateIds, {
-                type: WEBSOCKET_MESSAGE_TYPES.SPEECH_BUBBLE,
-                data: {
-                    playerId: playerId,
-                    playerName: player.name,
-                    messageId: teamMessage.id,
-                    message: `${teamMessage.icon} ${teamMessage.message}`,
-                    icon: teamMessage.icon,
-                },
-            }); */
-
             this.wsService.broadcastToRoom(roomId, {
                 type: WEBSOCKET_MESSAGE_TYPES.SPEECH_BUBBLE,
                 data: {
@@ -440,6 +430,52 @@ export class TrucoGameHandler extends AbstractGameHandler {
             });
         } catch (error) {
             console.error("Error sending team message:", error);
+        }
+    }
+
+    private handleSendTeamSign(playerId: string, roomId: string, data?: any): void {
+        if (!data?.signId) {
+            this.sendError(this.getPlayerConnection(playerId), "Sign ID is required");
+            return;
+        }
+
+        try {
+            const room = this.roomService.getRoom(roomId);
+            if (!room) return;
+
+            const game = room.game;
+            const player = game.players.find((p: any) => p.id === playerId);
+
+            if (!player) {
+                console.error("Player not found");
+                return;
+            }
+
+            // Only to team for now
+            const chanceOfBeingSeen = Math.random() < 0.2;
+            if (chanceOfBeingSeen) {
+                // Oh oh! Nos vieron las señas
+                this.wsService.broadcastToRoom(roomId, {
+                    type: WEBSOCKET_MESSAGE_TYPES.TEAM_SIGN,
+                    data: {
+                        playerId: playerId,
+                        signId: data.signId,
+                    },
+                });
+
+                return;
+            }
+
+            const teamPlayers = game.players.filter((p: any) => p.team === player.team)?.map((p: any) => p.id);
+            this.wsService.broadcastToPlayerIds(roomId, teamPlayers, {
+                type: WEBSOCKET_MESSAGE_TYPES.TEAM_SIGN,
+                data: {
+                    playerId: playerId,
+                    signId: data.signId,
+                },
+            });
+        } catch (error) {
+            console.error("Error sending team sign:", error);
         }
     }
 

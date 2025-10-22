@@ -4,7 +4,7 @@
 // ============================================================================
 
 import { Game, Action, GamePhase, ActionType, EnvidoCall, TrucoCall, TrucoResponse } from "@/shared/types/truco";
-import { ACTION_PRIORITIES, TEAM_MESSAGES } from "@/game/truco/constants";
+import { ACTION_PRIORITIES, TEAM_MESSAGES, TEAM_SIGNS, TeamSign } from "@/game/truco/constants";
 
 /**
  * Determine available actions for a player
@@ -28,6 +28,15 @@ export function getAvailableActions(game: Game, playerId: string): Action[] {
             });
         });
     }
+
+    TEAM_SIGNS.forEach((teamSign: TeamSign) => {
+        actions.push({
+            type: ActionType.TEAM_SIGN,
+            label: teamSign.label,
+            messageId: teamSign.id,
+            priority: ACTION_PRIORITIES[ActionType.TEAM_SIGN],
+        });
+    });
 
     if (!currentPlayer || !currentPlayer.isActive) {
         return actions;

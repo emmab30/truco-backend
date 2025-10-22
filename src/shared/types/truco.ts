@@ -187,6 +187,7 @@ export enum ActionType {
     NO_QUIERO = "noQuiero",
     GO_TO_MAZO = "goToMazo",
     TEAM_MESSAGE = "teamMessage",
+    TEAM_SIGN = "teamSign",
 }
 
 // ============================================================================
@@ -248,6 +249,10 @@ export interface RespondTrucoRequest {
 
 export interface SendTeamMessageRequest {
     messageId: string;
+}
+
+export interface SendTeamSignRequest {
+    signId: string;
 }
 
 // ============================================================================
@@ -312,6 +317,7 @@ export interface TrucoWebSocketEvents {
     RESPOND_TRUCO: RespondTrucoRequest;
     GO_TO_MAZO: {};
     SEND_TEAM_MESSAGE: SendTeamMessageRequest;
+    SEND_TEAM_SIGN: SendTeamSignRequest;
 
     // Server to Client - Truco-specific
     // Note: Room events use base Room type from shared/types
