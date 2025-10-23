@@ -32,6 +32,8 @@ export function createApiRoutes(_trucoGameService: TrucoGameService, _chinchonGa
                 },
             });
 
+            console.log(`Debug here: gamesCount`, gamesCount);
+
             // 2. Número de jugadores totales (usuarios únicos que han jugado)
             const uniquePlayers = await prisma.playedGame.findMany({
                 where: {
@@ -45,7 +47,11 @@ export function createApiRoutes(_trucoGameService: TrucoGameService, _chinchonGa
                 distinct: ["userId"],
             });
 
+            console.log(`Debug here: uniquePlayers`, uniquePlayers);
+
             const totalPlayers = uniquePlayers.length;
+
+            console.log(`Debug here: totalPlayers`, totalPlayers);
 
             // 3. Jugador con más partidas ganadas en las últimas 24 horas
             const topWinner = await prisma.playedGame.groupBy({
@@ -89,6 +95,8 @@ export function createApiRoutes(_trucoGameService: TrucoGameService, _chinchonGa
                     wins: winnerData?._count.userId || 0,
                 };
             }
+
+            console.log(`Debug here: topWinnerWithUser`, topWinnerWithUser);
 
             return res.json({
                 success: true,
