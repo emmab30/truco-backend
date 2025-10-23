@@ -326,7 +326,33 @@ export class TrucoGameService extends BaseGameService {
 
             console.log(`🏆 Game Over! Winners (Team ${winningTeam + 1}):`, winnerUserIds, "Losers:", loserUserIds);
 
-            Promise.all([
+            prisma.playedGame
+                .createMany({
+                    data: winnerUserIds
+                        .filter((uid) => !uid?.includes("ia_"))
+                        .map((uid) => ({
+                            userId: uid,
+                            type: GameType.TRUCO,
+                            status: "win",
+                        }))
+                        .concat(
+                            loserUserIds
+                                .filter((uid) => !uid?.includes("ia_"))
+                                .map((uid) => ({
+                                    userId: uid,
+                                    type: GameType.TRUCO,
+                                    status: "lost",
+                                }))
+                        ),
+                })
+                .then(() => {
+                    console.log(`🏆 Created played games for winners and losers`);
+                })
+                .catch((error) => {
+                    console.error(`🚨 Error creating played games for winners and losers: ${error}`);
+                });
+
+            /* Promise.all([
                 prisma.user.updateMany({
                     where: { uid: { in: winnerUserIds } },
                     data: { wins: { increment: 1 } },
@@ -335,11 +361,13 @@ export class TrucoGameService extends BaseGameService {
                     where: { uid: { in: loserUserIds } },
                     data: { losses: { increment: 1 } },
                 }),
-            ]).then(() => {
-                console.log(`🏆 Updated user stats for winners and losers`);
-            }).catch((error) => {
-                console.error(`🚨 Error updating user stats for winners and losers: ${error}`);
-            });
+            ])
+                .then(() => {
+                    console.log(`🏆 Updated user stats for winners and losers`);
+                })
+                .catch((error) => {
+                    console.error(`🚨 Error updating user stats for winners and losers: ${error}`);
+                }); */
 
             return true;
         }

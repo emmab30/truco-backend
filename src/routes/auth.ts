@@ -12,7 +12,7 @@ router.get("/me", authenticateToken, async (req: AuthenticatedRequest, res: Resp
 
         // Create user in database if does not exist
         const userData = {
-            uid: user.uid,
+            id: user.uid,
             email: user.email,
             name: user.displayName,
             picture: user.photoURL,
@@ -38,7 +38,7 @@ router.post("/verify", async (req: Request, res: Response) => {
 
         const existingUser = await prisma.user.findUnique({
             where: {
-                uid: decodedToken.uid,
+                id: decodedToken.uid,
             },
         });
 
@@ -46,7 +46,7 @@ router.post("/verify", async (req: Request, res: Response) => {
             try {
                 await prisma.user.create({
                     data: {
-                        uid: decodedToken.uid,
+                        id: decodedToken.uid,
                         email: decodedToken.email!,
                         name: decodedToken["name"],
                         picture: decodedToken.picture!,
@@ -63,7 +63,7 @@ router.post("/verify", async (req: Request, res: Response) => {
 
         return res.json({
             valid: true,
-            uid: decodedToken.uid,
+            id: decodedToken.uid,
             email: decodedToken.email,
             name: decodedToken["name"],
             picture: decodedToken.picture,
