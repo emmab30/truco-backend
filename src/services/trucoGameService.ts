@@ -326,17 +326,19 @@ export class TrucoGameService extends BaseGameService {
 
             console.log(`🏆 Game Over! Winners (Team ${winningTeam + 1}):`, winnerUserIds, "Losers:", loserUserIds);
 
-            // Update winners and losers
-            prisma.user.updateMany({
-                where: { uid: { in: winnerUserIds } },
-                data: {
-                    wins: { increment: 1 },
-                },
-            });
-
-            prisma.user.updateMany({
-                where: { uid: { in: loserUserIds } },
-                data: { losses: { increment: 1 } },
+            Promise.all([
+                prisma.user.updateMany({
+                    where: { uid: { in: winnerUserIds } },
+                    data: { wins: { increment: 1 } },
+                }),
+                prisma.user.updateMany({
+                    where: { uid: { in: loserUserIds } },
+                    data: { losses: { increment: 1 } },
+                }),
+            ]).then(() => {
+                console.log(`🏆 Updated user stats for winners and losers`);
+            }).catch((error) => {
+                console.error(`🚨 Error updating user stats for winners and losers: ${error}`);
             });
 
             return true;
