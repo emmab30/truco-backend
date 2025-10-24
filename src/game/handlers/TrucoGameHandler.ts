@@ -144,10 +144,8 @@ export class TrucoGameHandler extends AbstractGameHandler {
             const newHandGame = this.trucoGameService.dealNewHand(room.game.id);
             this.roomService.updateRoomGame(roomId, newHandGame);
 
-            this.wsService.broadcastToRoom(roomId, {
-                type: WEBSOCKET_MESSAGE_TYPES.NEW_HAND_DEALT,
-                data: { game: this.trucoGameService.getGameUpdate(newHandGame.id) },
-            });
+            // Broadcast the updated game state
+            this.wsService.broadcastGameUpdate(roomId);
         } catch (error) {
             console.error("Error dealing new hand:", error);
         }
@@ -209,17 +207,11 @@ export class TrucoGameHandler extends AbstractGameHandler {
                 this.sendSpeechBubble(roomId, playerId, callLabels[data.call as keyof typeof callLabels] || data.call, player.name, 5);
             }
 
-            this.wsService.broadcastToRoom(roomId, {
-                type: WEBSOCKET_MESSAGE_TYPES.ENVIDO_CALLED,
-                data: {
-                    playerId,
-                    call: data.call,
-                    game: this.trucoGameService.getGameUpdate(updatedGame.id),
-                },
-            });
-
             // Check if AI should respond to envido
             this.processAITurnIfNeeded(roomId).catch((err) => console.error("Error in AI turn:", err));
+
+            // Broadcast the updated game state
+            this.wsService.broadcastGameUpdate(roomId);
         } catch (error) {
             console.error("Error calling envido:", error);
         }
@@ -268,17 +260,11 @@ export class TrucoGameHandler extends AbstractGameHandler {
                 this.sendEnvidoAnnouncementsBubbles(roomId, envidoState, updatedGame);
             }
 
-            this.wsService.broadcastToRoom(roomId, {
-                type: WEBSOCKET_MESSAGE_TYPES.ENVIDO_RESPONDED,
-                data: {
-                    playerId,
-                    response: data.response,
-                    game: this.trucoGameService.getGameUpdate(updatedGame.id),
-                },
-            });
-
             // Check if AI should play next
             this.processAITurnIfNeeded(roomId).catch((err) => console.error("Error in AI turn:", err));
+
+            // Broadcast the updated game state
+            this.wsService.broadcastGameUpdate(roomId);
         } catch (error) {
             console.error("Error responding to envido:", error);
         }
@@ -308,17 +294,11 @@ export class TrucoGameHandler extends AbstractGameHandler {
                 this.sendSpeechBubble(roomId, playerId, callLabels[data.call as keyof typeof callLabels] || data.call, player.name, 5);
             }
 
-            this.wsService.broadcastToRoom(roomId, {
-                type: WEBSOCKET_MESSAGE_TYPES.TRUCO_CALLED,
-                data: {
-                    playerId,
-                    call: data.call,
-                    game: this.trucoGameService.getGameUpdate(updatedGame.id),
-                },
-            });
-
             // Check if AI should respond to truco
             this.processAITurnIfNeeded(roomId).catch((err) => console.error("Error in AI turn:", err));
+
+            // Broadcast the updated game state
+            this.wsService.broadcastGameUpdate(roomId);
         } catch (error) {
             console.error("Error calling truco:", error);
         }
@@ -349,20 +329,14 @@ export class TrucoGameHandler extends AbstractGameHandler {
                 this.sendSpeechBubble(roomId, playerId, responseLabels[data.response as keyof typeof responseLabels] || data.response, player.name, 5);
             }
 
-            this.wsService.broadcastToRoom(roomId, {
-                type: WEBSOCKET_MESSAGE_TYPES.TRUCO_RESPONDED,
-                data: {
-                    playerId,
-                    response: data.response,
-                    game: this.trucoGameService.getGameUpdate(updatedGame.id),
-                },
-            });
-
             // Handle automatic hand progression if hand ended
             this.handleGameProgression(roomId, updatedGame);
 
             // Check if AI should play next
             this.processAITurnIfNeeded(roomId).catch((err) => console.error("Error in AI turn:", err));
+
+            // Broadcast the updated game state
+            this.wsService.broadcastGameUpdate(roomId);
         } catch (error) {
             console.error("Error responding to truco:", error);
         }
@@ -559,13 +533,11 @@ export class TrucoGameHandler extends AbstractGameHandler {
                     const newHandGame = this.trucoGameService.dealNewHand(room.game.id);
                     this.roomService.updateRoomGame(roomId, newHandGame);
 
-                    this.wsService.broadcastToRoom(roomId, {
-                        type: WEBSOCKET_MESSAGE_TYPES.NEW_HAND_DEALT,
-                        data: { game: this.trucoGameService.getGameUpdate(newHandGame.id) },
-                    });
-
                     // Check if AI should start the new hand
                     this.processAITurnIfNeeded(roomId).catch((err) => console.error("Error in AI turn:", err));
+
+                    // Broadcast the updated game state
+                    this.wsService.broadcastGameUpdate(roomId);
                 } catch (error) {
                     console.error("Error dealing new hand automatically:", error);
                 }

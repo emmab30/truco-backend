@@ -6,6 +6,7 @@ import { RoomService } from "./roomService";
 import { GameHandlerRegistry } from "@/game/handlers/GameHandlerRegistry";
 import { TrucoGameHandler } from "@/game/handlers/TrucoGameHandler";
 import { ChinchonGameHandler } from "@/game/handlers/ChinchonGameHandler";
+import { TrucoGame } from "@/game/truco";
 
 /**
  * WebSocket Service
@@ -44,16 +45,8 @@ export class WebSocketService {
         const hasConnection = this.playerConnections.has(playerId) && this.playerConnections.get(playerId)?.readyState === 1;
         const context = this.playerContexts.get(playerId);
 
-        if (!hasConnection) {
-            return "offline";
-        }
-
-        console.log(`Context for user ${playerId}: ${JSON.stringify(context)}`);
-
-        if (!context || context.location !== "game") {
-            return "idle";
-        }
-
+        if (!hasConnection) return "offline";
+        if (!context || context.location !== "game") return "idle";
         return "online";
     }
 
@@ -90,15 +83,8 @@ export class WebSocketService {
 
             // If context changed AND it's not a PING message, broadcast game update to room
             if (contextChanged && type !== "PING") {
-                console.log(`🔄 Context changed for player ${playerId}, broadcasting game update`);
                 const room = this.roomService.getRoomByPlayer(playerId);
-                if (room) {
-                    const gameService = this.getGameService(room.gameType);
-                    this.broadcastToRoom(room.id, {
-                        type: WEBSOCKET_MESSAGE_TYPES.GAME_UPDATE,
-                        data: { game: gameService.getGameUpdate(room.game.id) },
-                    });
-                }
+                if (room) this.broadcastGameUpdate(room.id);
             }
         }
 
@@ -111,8 +97,6 @@ export class WebSocketService {
             }
             return;
         }
-
-        console.log(`🔍 Processing message: ${type} for player: ${playerId} in room: ${roomId}`);
 
         // Register the WebSocket connection
         if (playerId) {
@@ -151,11 +135,7 @@ export class WebSocketService {
 
                 // Broadcast game update to show player as reconnected
                 console.log(`📡 Broadcasting game update due to player reconnection: ${playerId}`);
-                const gameService = this.getGameService(room.gameType);
-                this.broadcastToRoom(room.id, {
-                    type: WEBSOCKET_MESSAGE_TYPES.GAME_UPDATE,
-                    data: { game: gameService.getGameUpdate(room.game.id) },
-                });
+                this.broadcastGameUpdate(room.id);
             }
 
             if (roomId) {
@@ -303,11 +283,7 @@ export class WebSocketService {
                 // Broadcast game update immediately to show player as offline
                 if (room) {
                     console.log(`📡 Broadcasting game update due to player disconnect: ${playerId}`);
-                    const gameService = this.getGameService(room.gameType);
-                    this.broadcastToRoom(room.id, {
-                        type: WEBSOCKET_MESSAGE_TYPES.GAME_UPDATE,
-                        data: { game: gameService.getGameUpdate(room.game.id) },
-                    });
+                    this.broadcastGameUpdate(room.id);
                 }
                 if (room) {
                     const player = room.game.players.find((p: any) => p.id === playerId);
@@ -481,13 +457,7 @@ export class WebSocketService {
                 }
             }
 
-            // Broadcast the updated game state
-            this.sendMessage(ws, {
-                type: WEBSOCKET_MESSAGE_TYPES.GAME_UPDATE,
-                data: {
-                    game: this.getGameService(room.gameType).getGameUpdate(room.game.id),
-                },
-            });
+            this.broadcastGameUpdate(room.id);
         } catch (error) {
             console.log(`Error!`, error);
             this.sendError(ws, "Error creating room");
@@ -564,13 +534,7 @@ export class WebSocketService {
                 data: { rooms: this.roomService.getAllRooms() },
             });
 
-            // Broadcast the updated game state
-            this.sendMessage(ws, {
-                type: WEBSOCKET_MESSAGE_TYPES.GAME_UPDATE,
-                data: {
-                    game: this.getGameService(room.gameType).getGameUpdate(room.game.id),
-                },
-            });
+            this.broadcastGameUpdate(roomId);
         } catch (error) {
             this.sendError(ws, "Error joining room");
         }
@@ -755,6 +719,36 @@ export class WebSocketService {
         this.sendMessage(ws, {
             type: WEBSOCKET_MESSAGE_TYPES.ERROR,
             data: { message },
+        });
+    }
+
+    public broadcastGameUpdate(roomId: string): void {
+        const room = this.roomService.getRoom(roomId);
+        if (!room) return;
+
+        console.log(`🔄 Broadcasting game update to room ${roomId}`);
+
+        // Send message to every player in the room
+        const connections = this.roomService.getRoomConnections(roomId);
+        const gameUpdate: TrucoGame = this.getGameService(room.gameType).getGameUpdate(room.game.id);
+
+        connections.forEach((ws, playerId) => {
+            console.log(`🔄 Sending game update to player ${playerId} in room ${roomId}`);
+            try {
+                // Exclude cards from opponent players
+                const gameUpdateCopy = structuredClone(gameUpdate);
+                gameUpdateCopy.metadata.players.forEach((player) => {
+                    if (player.id !== playerId) {
+                        console.log(`Not sending cards and available actions to player ${player.id}`);
+                        player.cards = [];
+                        player.availableActions = [];
+                    }
+                });
+
+                ws.send(JSON.stringify({ type: WEBSOCKET_MESSAGE_TYPES.GAME_UPDATE, data: { game: gameUpdateCopy } }));
+            } catch (error) {
+                console.error(`❌ Error sending game update to player ${playerId} in room ${roomId}:`, error);
+            }
         });
     }
 

@@ -323,14 +323,8 @@ export interface TrucoWebSocketEvents {
     // Game updates use GAME_UPDATE from shared/types with TrucoGame
     GAME_STARTED: {};
     CARD_PLAYED: { playerId: string; cardId: string };
-    ENVIDO_CALLED: { playerId: string; call: EnvidoCall };
-    ENVIDO_RESPONDED: { playerId: string; response: EnvidoResponse };
-    TRUCO_CALLED: { playerId: string; call: TrucoCall };
-    TRUCO_RESPONDED: { playerId: string; response: TrucoResponse };
     WENT_TO_MAZO: { playerId: string };
     HAND_END: { winner: { name: string; team: Team; points: number } };
-    NEW_HAND_DEALT: {};
-    NEW_ROUND_DEALT: {};
     SPEECH_BUBBLE: { playerId: string; message: string };
     TEAM_MESSAGE: { playerId: string; messageId: string; message: string; icon: string };
 }
