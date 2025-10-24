@@ -114,11 +114,18 @@ export interface JoinRoomRequest {
 // WEBSOCKET EVENT TYPES
 // ============================================================================
 
+// types.ts o donde tengas tus tipos
+export interface UserContext {
+    location: 'homepage' | 'lobby' | 'game' | 'settings' | 'profile';
+    timestamp: number;
+}
+
 export interface WebSocketMessage {
     type: string;
     data?: any;
-    roomId?: string;
     playerId?: string;
+    roomId?: string;
+    context?: UserContext; // User context
 }
 export interface WebSocketEvents {
     // Generic room events (Client to Server)
