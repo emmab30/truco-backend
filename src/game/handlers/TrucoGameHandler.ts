@@ -457,7 +457,7 @@ export class TrucoGameHandler extends AbstractGameHandler {
             }
 
             // Only to team for now
-            const chanceOfBeingSeen = Math.random() < 0.2;
+            const chanceOfBeingSeen = Math.random() < 0.3;
             if (chanceOfBeingSeen) {
                 // Oh oh! Nos vieron las señas
                 this.wsService.broadcastToRoom(roomId, {
