@@ -3,7 +3,7 @@ import { Game, Team, TrucoGame, EnvidoCall, TrucoCall, EnvidoResponse, TrucoResp
 import { GameType } from "@/shared/constants";
 import { BaseGameService } from "./baseGameService";
 import { TrucoAIService } from "@/game/truco/ai/aiService";
-import prisma from "@/config/prisma";
+/* import prisma from "@/config/prisma"; */
 
 /**
  * Truco Game Service
@@ -331,6 +331,8 @@ export class TrucoGameService extends BaseGameService {
             team2Score = game.players.filter((p) => p.team === Team.TEAM_2).reduce((sum, p) => sum + p.points, 0);
         }
 
+        console.log("🏆 isEndedGame", game.gameConfig.maxScore, team1Score, team2Score);
+
         if (team1Score >= maxScore || team2Score >= maxScore) {
             const winningTeam = team1Score >= maxScore ? Team.TEAM_1 : Team.TEAM_2;
 
@@ -339,7 +341,7 @@ export class TrucoGameService extends BaseGameService {
 
             console.log(`🏆 Game Over! Winners (Team ${winningTeam + 1}):`, winnerUserIds, "Losers:", loserUserIds);
 
-            prisma.playedGame
+            /* prisma.playedGame
                 .createMany({
                     data: winnerUserIds
                         .filter((uid) => !uid?.includes("ia_"))
@@ -363,7 +365,7 @@ export class TrucoGameService extends BaseGameService {
                 })
                 .catch((error) => {
                     console.error(`🚨 Error creating played games for winners and losers: ${error}`);
-                });
+                }); */
 
             return true;
         }
