@@ -16,6 +16,7 @@ export interface BasePlayer {
     photo?: string;
     team: number;
     points: number;
+    status?: "online" | "idle" | "offline";
 }
 
 export interface BaseGame<TMetadata = any> {

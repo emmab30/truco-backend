@@ -6,6 +6,7 @@ import { createGameByType } from "@/game/gameFactory";
  */
 export abstract class BaseGameService {
     protected games: Map<string, any> = new Map();
+    protected websocketService?: any; // Reference to WebSocketService for player status
 
     /**
      * Create a new game
@@ -50,6 +51,43 @@ export abstract class BaseGameService {
      */
     getAllGames(): any[] {
         return Array.from(this.games.values());
+    }
+
+    /**
+     * Set the WebSocket service reference for player status
+     */
+    setWebSocketService(websocketService: any): void {
+        this.websocketService = websocketService;
+    }
+
+    /**
+     * Get player status from WebSocket service
+     */
+    protected getPlayerStatus(playerId: string): "online" | "idle" | "offline" {
+        if (!this.websocketService) {
+            return "offline";
+        }
+        return this.websocketService.getPlayerStatus(playerId);
+    }
+
+    /**
+     * Get game update with player status included
+     */
+    getGameUpdateWithStatus(gameId: string): any {
+        const game = this.getGame(gameId);
+        if (!game) {
+            return null;
+        }
+
+        // Add status to each player
+        if (game.players) {
+            game.players = game.players.map((player: any) => ({
+                ...player,
+                status: this.getPlayerStatus(player.id)
+            }));
+        }
+
+        return game;
     }
 
     /**

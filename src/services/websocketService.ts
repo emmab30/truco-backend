@@ -24,6 +24,10 @@ export class WebSocketService {
         // Initialize game handler registry
         this.gameHandlerRegistry = new GameHandlerRegistry();
 
+        // Set WebSocket service reference in game services
+        trucoGameService.setWebSocketService(this);
+        chinchonGameService.setWebSocketService(this);
+
         // Register Truco game handler
         const trucoHandler = new TrucoGameHandler(trucoGameService, roomService, this);
         this.gameHandlerRegistry.registerHandler(GameType.TRUCO, trucoHandler);
@@ -31,6 +35,26 @@ export class WebSocketService {
         // Register Chinchón game handler
         const chinchonHandler = new ChinchonGameHandler(this.chinchonGameService, roomService, this);
         this.gameHandlerRegistry.registerHandler(GameType.CHINCHON, chinchonHandler);
+    }
+
+    /**
+     * Get player status based on connection and context
+     */
+    public getPlayerStatus(playerId: string): "online" | "idle" | "offline" {
+        const hasConnection = this.playerConnections.has(playerId) && this.playerConnections.get(playerId)?.readyState === 1;
+        const context = this.playerContexts.get(playerId);
+
+        if (!hasConnection) {
+            return "offline";
+        }
+
+        console.log(`Context for user ${playerId}: ${JSON.stringify(context)}`);
+
+        if (!context || context.location !== "game") {
+            return "idle";
+        }
+
+        return "online";
     }
 
     /**
@@ -57,7 +81,25 @@ export class WebSocketService {
 
         if (playerId && context) {
             console.log(`🔍 Setting player context for player ${playerId}: ${JSON.stringify(context)}`);
+
+            // Check if context changed (only compare location, not timestamp)
+            const previousContext = this.playerContexts.get(playerId);
+            const contextChanged = !previousContext || previousContext.location !== context.location;
+
             this.playerContexts.set(playerId, context);
+
+            // If context changed AND it's not a PING message, broadcast game update to room
+            if (contextChanged && type !== "PING") {
+                console.log(`🔄 Context changed for player ${playerId}, broadcasting game update`);
+                const room = this.roomService.getRoomByPlayer(playerId);
+                if (room) {
+                    const gameService = this.getGameService(room.gameType);
+                    this.broadcastToRoom(room.id, {
+                        type: WEBSOCKET_MESSAGE_TYPES.GAME_UPDATE,
+                        data: { game: gameService.getGameUpdate(room.game.id) },
+                    });
+                }
+            }
         }
 
         // Handle PING without logging to reduce noise
@@ -106,6 +148,14 @@ export class WebSocketService {
             if (room) {
                 this.roomService.addConnection(room.id, playerId, ws);
                 console.log(`🔗 Re-added connection for player ${playerId} to room ${room.id} after reconnection`);
+
+                // Broadcast game update to show player as reconnected
+                console.log(`📡 Broadcasting game update due to player reconnection: ${playerId}`);
+                const gameService = this.getGameService(room.gameType);
+                this.broadcastToRoom(room.id, {
+                    type: WEBSOCKET_MESSAGE_TYPES.GAME_UPDATE,
+                    data: { game: gameService.getGameUpdate(room.game.id) },
+                });
             }
 
             if (roomId) {
@@ -249,6 +299,16 @@ export class WebSocketService {
 
                 // Get the room the player was in
                 const room = this.roomService.getRoomByPlayer(playerId);
+
+                // Broadcast game update immediately to show player as offline
+                if (room) {
+                    console.log(`📡 Broadcasting game update due to player disconnect: ${playerId}`);
+                    const gameService = this.getGameService(room.gameType);
+                    this.broadcastToRoom(room.id, {
+                        type: WEBSOCKET_MESSAGE_TYPES.GAME_UPDATE,
+                        data: { game: gameService.getGameUpdate(room.game.id) },
+                    });
+                }
                 if (room) {
                     const player = room.game.players.find((p: any) => p.id === playerId);
                     const playerName = player?.name || "Jugador desconocido";
@@ -389,7 +449,7 @@ export class WebSocketService {
                 type: WEBSOCKET_MESSAGE_TYPES.ROOM_CREATED,
                 data: {
                     room: this.roomToResponse(room),
-                    game: gameService.getGameUpdate(room.game.id),
+                    game: this.getGameService(room.gameType).getGameUpdate(room.game.id),
                 },
             });
 

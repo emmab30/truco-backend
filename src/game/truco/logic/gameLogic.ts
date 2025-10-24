@@ -175,6 +175,7 @@ export function addPlayer(game: Game, playerId: string, playerName: string, team
         hasPlayedCard: false,
         wentToMazo: false,
         ...(photo && { photo }),
+        status: "online",
     };
 
     return {

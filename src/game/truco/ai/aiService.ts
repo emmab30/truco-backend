@@ -41,6 +41,7 @@ export class TrucoAIService {
             hasPlayedCard: false,
             wentToMazo: false,
             availableActions: [],
+            status: "online",
         };
 
         return aiPlayer;

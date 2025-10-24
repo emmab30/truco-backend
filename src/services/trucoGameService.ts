@@ -281,6 +281,7 @@ export class TrucoGameService extends BaseGameService {
         const playersWithActions = game.players.map((player: any) => ({
             ...player,
             availableActions: getAvailableActions(game, player.id),
+            status: this.getPlayerStatus(player.id), // Add player status
         }));
 
         // Change phase in case the game is ended
@@ -295,6 +296,7 @@ export class TrucoGameService extends BaseGameService {
                 photo: p.photo,
                 team: p.team,
                 points: p.points,
+                status: this.getPlayerStatus(p.id),
             })),
             maxScore: game.gameConfig.maxScore,
             maxPlayers: game.gameConfig.maxPlayers,

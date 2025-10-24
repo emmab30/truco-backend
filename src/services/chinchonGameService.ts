@@ -346,6 +346,7 @@ export class ChinchonGameService extends BaseGameService {
                 points: player.totalScore || 0, // Normalize points field for frontend compatibility
                 availableActions: this.getAvailableActions(gameId, player.id),
                 combinations: combinations,
+                status: this.getPlayerStatus(player.id), // Add player status
             };
             console.log(`📊 Mapping player ${player.name}: totalScore=${player.totalScore} → points=${mappedPlayer.points}`);
             return mappedPlayer;
@@ -370,6 +371,7 @@ export class ChinchonGameService extends BaseGameService {
                 photo: p.photo,
                 team: p.team,
                 points: p.totalScore || 0, // Use totalScore for Chinchón
+                status: this.getPlayerStatus(p.id),
             })),
             maxScore: game.gameConfig.maxScore,
             maxPlayers: game.gameConfig.maxPlayers,
