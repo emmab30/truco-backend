@@ -1,4 +1,4 @@
-import { WebSocketMessage } from "@/shared/types";
+import { UserContext, WebSocketMessage } from "@/shared/types";
 import { WEBSOCKET_MESSAGE_TYPES, GameType } from "@/shared/constants";
 import { TrucoGameService } from "./trucoGameService";
 import { ChinchonGameService } from "./chinchonGameService";
@@ -15,6 +15,7 @@ import { ChinchonGameHandler } from "@/game/handlers/ChinchonGameHandler";
 const GRACE_PERIOD_TIMEOUT = 60 * 1000; // 60 seconds grace period for reconnection
 export class WebSocketService {
     private playerConnections: Map<string, any> = new Map(); // playerId -> WebSocket
+    private playerContexts: Map<string, UserContext | null> = new Map(); // playerId -> UserContext
     private gameHandlerRegistry: GameHandlerRegistry;
     private disconnectTimeouts: Map<string, NodeJS.Timeout> = new Map(); // playerId -> timeout for delayed disconnect
 
@@ -52,7 +53,12 @@ export class WebSocketService {
      * @param message - Message object
      */
     handleMessage(ws: any, message: WebSocketMessage): void {
-        const { type, roomId, playerId } = message;
+        const { context, type, roomId, playerId } = message;
+
+        if (playerId && context) {
+            console.log(`🔍 Setting player context for player ${playerId}: ${JSON.stringify(context)}`);
+            this.playerContexts.set(playerId, context);
+        }
 
         // Handle PING without logging to reduce noise
         if (type === "PING") {
