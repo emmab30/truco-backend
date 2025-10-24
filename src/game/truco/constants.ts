@@ -177,15 +177,19 @@ export const TEAM_MESSAGES: TeamMessage[] = [
     },
     {
         id: "pone",
-        message: "Poné",
+        message: "¡Poné!",
         icon: "💪",
     },
     {
         id: "veni",
-        message: "Vení",
+        message: "¡Vení!",
         icon: "👋",
     },
-
+    {
+        id: "voy",
+        message: "Voy a vos",
+        icon: "👉",
+    },
     // Puntos de envido
     {
         id: "buena-primera",
@@ -197,20 +201,10 @@ export const TEAM_MESSAGES: TeamMessage[] = [
         message: "Nada de puntos",
         icon: "😔",
     },
-    {
-        id: "de-las-viejas",
-        message: "¡Tengo de las viejas!",
-        icon: "😊",
-    },
     // Información sobre cartas
     {
-        id: "tengo-segunda",
-        message: "¡Tengo para segunda!",
-        icon: "💪",
-    },
-    {
         id: "no-tengo-segunda",
-        message: "Van solos muchachos",
+        message: "No tengo nada",
         icon: "😔",
     },
     {
