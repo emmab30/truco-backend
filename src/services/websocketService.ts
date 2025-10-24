@@ -245,6 +245,7 @@ export class WebSocketService {
                 console.log(`🔍 Connection state before removal: ${ws.readyState}`);
 
                 this.playerConnections.delete(playerId);
+                this.playerContexts.delete(playerId);
 
                 // Get the room the player was in
                 const room = this.roomService.getRoomByPlayer(playerId);
