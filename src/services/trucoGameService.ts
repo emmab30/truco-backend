@@ -313,16 +313,27 @@ export class TrucoGameService extends BaseGameService {
     }
 
     isEndedGame(game: Game): boolean {
-        // Check if there is a winner
         const maxScore = game.gameConfig.maxScore;
-        const team1Score = game.players.filter((p) => p.team === Team.TEAM_1).reduce((sum, p) => sum + p.points, 0);
-        const team2Score = game.players.filter((p) => p.team === Team.TEAM_2).reduce((sum, p) => sum + p.points, 0);
+
+        // In team games, the score is the sum of the scores of the two teams
+        const isTeamGame = game.players.length === 4;
+
+        let team1Score: number;
+        let team2Score: number;
+
+        if (isTeamGame) {
+            // In team games, the score is the sum of the scores of the two teams
+            team1Score = game.players.find((p) => p.team === Team.TEAM_1)?.points ?? 0;
+            team2Score = game.players.find((p) => p.team === Team.TEAM_2)?.points ?? 0;
+        } else {
+            // In 2-player games, the score is the sum of the scores of the two players
+            team1Score = game.players.filter((p) => p.team === Team.TEAM_1).reduce((sum, p) => sum + p.points, 0);
+            team2Score = game.players.filter((p) => p.team === Team.TEAM_2).reduce((sum, p) => sum + p.points, 0);
+        }
 
         if (team1Score >= maxScore || team2Score >= maxScore) {
-            // Determine which team won
             const winningTeam = team1Score >= maxScore ? Team.TEAM_1 : Team.TEAM_2;
 
-            // Get all user ids from winners and losers
             const winnerUserIds = game.players.filter((p) => p.team === winningTeam).map((p) => p.id);
             const loserUserIds = game.players.filter((p) => p.team !== winningTeam).map((p) => p.id);
 
@@ -353,23 +364,6 @@ export class TrucoGameService extends BaseGameService {
                 .catch((error) => {
                     console.error(`🚨 Error creating played games for winners and losers: ${error}`);
                 });
-
-            /* Promise.all([
-                prisma.user.updateMany({
-                    where: { uid: { in: winnerUserIds } },
-                    data: { wins: { increment: 1 } },
-                }),
-                prisma.user.updateMany({
-                    where: { uid: { in: loserUserIds } },
-                    data: { losses: { increment: 1 } },
-                }),
-            ])
-                .then(() => {
-                    console.log(`🏆 Updated user stats for winners and losers`);
-                })
-                .catch((error) => {
-                    console.error(`🚨 Error updating user stats for winners and losers: ${error}`);
-                }); */
 
             return true;
         }
