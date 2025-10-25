@@ -44,9 +44,10 @@ app.use(express.urlencoded({ extended: true }));
 const trucoGameService = new TrucoGameService();
 const chinchonGameService = new ChinchonGameService();
 const roomService = new RoomService(trucoGameService, chinchonGameService);
+const wsService = new WebSocketService(trucoGameService, chinchonGameService, roomService);
 
-// API routes
-app.use("/api", createApiRoutes(trucoGameService, chinchonGameService, roomService));
+// API routes (needs wsService for room routes to broadcast updates)
+app.use("/api", createApiRoutes(trucoGameService, chinchonGameService, roomService, wsService));
 
 // ============================================================================
 // WEBSOCKET SERVER SETUP
@@ -56,7 +57,6 @@ const wss = new WebSocketServer({
     server,
     path: "/ws",
 });
-const wsService = new WebSocketService(trucoGameService, chinchonGameService, roomService);
 
 // WebSocket connection handling
 wss.on("connection", (ws, req) => {
