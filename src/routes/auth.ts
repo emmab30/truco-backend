@@ -61,14 +61,24 @@ router.post("/verify", async (req: Request, res: Response) => {
             console.log("[Auth] User already exists");
         }
 
+        const winsLosses = await prisma.playedGame.groupBy({
+            by: ["status"],
+            where: {
+                userId: decodedToken.uid,
+            },
+            _count: {
+                status: true,
+            },
+        });
+
         return res.json({
             valid: true,
             id: decodedToken.uid,
             email: decodedToken.email,
             name: decodedToken["name"],
             picture: decodedToken.picture,
-            wins: existingUser?.wins || 0,
-            losses: existingUser?.losses || 0,
+            wins: winsLosses.find((w) => w.status === "win")?._count.status || 0,
+            losses: winsLosses.find((w) => w.status === "lost")?._count.status || 0,
         });
     } catch (error) {
         console.error("Error verifying token:", error);
