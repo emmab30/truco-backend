@@ -2,19 +2,13 @@ import { Router } from "express";
 import { TrucoGameService } from "@/services/trucoGameService";
 import { ChinchonGameService } from "@/services/chinchonGameService";
 import { RoomService } from "@/services/roomService";
-import { WebSocketService } from "@/services/websocketService";
 import authRoutes from "@/routes/auth";
 import statsRoutes from "@/routes/stats";
 import roomRoutes from "@/routes/rooms";
 import telegramRoutes from "@/routes/telegram";
 import healthRoutes from "@/routes/health";
 
-export function createApiRoutes(
-    trucoGameService: TrucoGameService,
-    chinchonGameService: ChinchonGameService,
-    roomService: RoomService,
-    webSocketService: WebSocketService
-) {
+export function createApiRoutes(_trucoGameService: TrucoGameService, _chinchonGameService: ChinchonGameService, roomService: RoomService) {
     const router = Router();
 
     // ============================================================================
@@ -30,7 +24,7 @@ export function createApiRoutes(
     // ============================================================================
     // ROOMS ROUTES
     // ============================================================================
-    router.use("/rooms", roomRoutes(roomService, webSocketService, trucoGameService, chinchonGameService));
+    router.use("/rooms", roomRoutes(roomService));
 
     // ============================================================================
     // TELEGRAM ROUTES
