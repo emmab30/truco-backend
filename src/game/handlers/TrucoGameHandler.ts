@@ -47,7 +47,6 @@ export class TrucoGameHandler extends AbstractGameHandler {
 
     handleMessage(ws: any, message: WebSocketMessage, roomId?: string, playerId?: string): void {
         const { type, data } = message;
-
         if (!roomId || !playerId) {
             this.sendError(ws, "Room ID and Player ID are required for game actions");
             return;
@@ -506,7 +505,7 @@ export class TrucoGameHandler extends AbstractGameHandler {
             // Send HAND_END message immediately with winner information
             const winningTeam = game.currentHand?.winner;
             const handWinnerName = getHandWinnerName(winningTeam, game.players);
-            
+
             // Get the first player from the winning team for display purposes
             const winnerPlayer = game.players.find((p: any) => p.team === winningTeam);
 

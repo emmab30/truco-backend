@@ -111,6 +111,8 @@ export interface CreateRoomRequest {
 
 // types.ts o donde tengas tus tipos
 export interface UserContext {
+    uid: string;
+    roomId: string;
     location: 'homepage' | 'lobby' | 'game' | 'settings' | 'profile';
     timestamp: number;
 }
@@ -118,23 +120,15 @@ export interface UserContext {
 export interface WebSocketMessage {
     type: string;
     data?: any;
-    playerId?: string;
-    roomId?: string;
     context?: UserContext; // User context
 }
 export interface WebSocketEvents {
     // Generic room events (Client to Server)
-    REGISTER_PLAYER: { playerId: string };
     LEAVE_ROOM: {};
-    GET_ROOMS: {};
 
     // Generic server responses (Server to Client)
-    PLAYER_REGISTERED: { playerId: string };
     ROOM_CREATED: { room: Room };
-    ROOM_JOINED: { room: Room };
-    PLAYER_JOINED: { player: BasePlayer; room: Room };
-    PLAYER_LEFT: { playerId: string; room: Room };
-    ROOM_LIST_UPDATED: { rooms: Room[] };
+    ROOM_UPDATE: { room: Room };
     ERROR: { message: string };
 
     // Game updates (Server to Client)

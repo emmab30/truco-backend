@@ -5,6 +5,22 @@ import { RoomService } from "@/services/roomService";
 export default function roomRoutes(roomService: RoomService) {
     const router = Router();
 
+    router.get("/", async (_, res) => {
+        try {
+            const rooms = await roomService.getAllRooms();
+            return res.json({
+                success: true,
+                data: rooms,
+            });
+        } catch (error) {
+            console.error("Error getting rooms:", error);
+            return res.status(500).json({
+                success: false,
+                error: "Internal server error",
+            });
+        }
+    });
+
     /**
      * GET /api/rooms/:id
      * Get room details by ID (excluding password)

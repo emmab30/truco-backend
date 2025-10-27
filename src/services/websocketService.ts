@@ -7,6 +7,7 @@ import { GameHandlerRegistry } from "@/game/handlers/GameHandlerRegistry";
 import { TrucoGameHandler } from "@/game/handlers/TrucoGameHandler";
 import { ChinchonGameHandler } from "@/game/handlers/ChinchonGameHandler";
 import { TrucoGame } from "@/game/truco";
+import { getPlayerInfo } from "@/utils/auth";
 
 /**
  * WebSocket Service
@@ -70,7 +71,10 @@ export class WebSocketService {
      * @param message - Message object
      */
     handleMessage(ws: any, message: WebSocketMessage): void {
-        const { context, type, roomId, playerId } = message;
+        const { context, type } = message;
+
+        const playerId = context?.uid;
+        const roomId = context?.roomId;
 
         if (playerId && context) {
             console.log(`🔍 Setting player context for player ${playerId}: ${JSON.stringify(context)}`);
@@ -127,7 +131,6 @@ export class WebSocketService {
             // Set the new connection AFTER handling the old one
             this.playerConnections.set(playerId, ws);
 
-            // REGISTER_PLAYER does not have a roomId, so we need to add the connection to the room
             const room = this.roomService.getRoomByPlayer(playerId);
             if (room) {
                 this.roomService.addConnection(room.id, playerId, ws);
@@ -168,13 +171,7 @@ export class WebSocketService {
      * Check if a message type is a room-related event
      */
     private isRoomEvent(messageType: string): boolean {
-        const roomEvents = [
-            WEBSOCKET_MESSAGE_TYPES.REGISTER_PLAYER,
-            WEBSOCKET_MESSAGE_TYPES.JOIN_ROOM_BY_ID,
-            WEBSOCKET_MESSAGE_TYPES.GET_ROOM_INFO,
-            WEBSOCKET_MESSAGE_TYPES.LEAVE_ROOM,
-            WEBSOCKET_MESSAGE_TYPES.GET_ROOMS,
-        ];
+        const roomEvents = [WEBSOCKET_MESSAGE_TYPES.JOIN_ROOM_BY_ID, WEBSOCKET_MESSAGE_TYPES.LEAVE_ROOM];
         return roomEvents.includes(messageType as any);
     }
 
@@ -186,27 +183,14 @@ export class WebSocketService {
      * Handle room-related events
      */
     private handleRoomEvent(ws: any, message: WebSocketMessage, roomId?: string, playerId?: string): void {
-        const { type, data } = message;
-
+        const { type } = message;
         switch (type) {
-            case WEBSOCKET_MESSAGE_TYPES.REGISTER_PLAYER:
-                this.handleRegisterPlayer(ws, data);
-                break;
-
             case WEBSOCKET_MESSAGE_TYPES.JOIN_ROOM_BY_ID:
-                this.handleJoinRoomById(ws, data, roomId as string);
-                break;
-
-            case WEBSOCKET_MESSAGE_TYPES.GET_ROOM_INFO:
-                this.handleGetRoomInfo(ws, roomId);
+                this.handleJoinRoomById(ws, roomId as string, message);
                 break;
 
             case WEBSOCKET_MESSAGE_TYPES.LEAVE_ROOM:
                 this.handleLeaveRoom(ws, playerId, roomId);
-                break;
-
-            case WEBSOCKET_MESSAGE_TYPES.GET_ROOMS:
-                this.handleGetRooms(ws, playerId);
                 break;
 
             default:
@@ -319,14 +303,6 @@ export class WebSocketService {
                             // Remove player from room (this will delete the room if it becomes empty or has only one player)
                             console.log(`🗑️ Removing player from room after grace period`);
                             this.roomService.leaveRoom(playerId);
-
-                            // Update room list for everyone
-                            const allRooms = this.roomService.getAllRooms();
-                            console.log(`📡 Broadcasting room list: ${allRooms.length} rooms`);
-                            this.broadcastToAll({
-                                type: WEBSOCKET_MESSAGE_TYPES.ROOM_LIST_UPDATED,
-                                data: { rooms: allRooms },
-                            });
                         }
 
                         // Clean up the timeout reference
@@ -347,33 +323,19 @@ export class WebSocketService {
     // ROOM MESSAGE HANDLERS
     // ============================================================================
 
-    private handleRegisterPlayer(ws: any, data: any): void {
-        const { playerId } = data;
-        this.sendMessage(ws, {
-            type: WEBSOCKET_MESSAGE_TYPES.PLAYER_REGISTERED,
-            data: { playerId },
-        });
-    }
-
     /**
      * Handle join room by ID request (for reconnection)
      * @param ws - WebSocket connection
      * @param data - Message data
      * @param roomId - Room ID
      */
-    private handleJoinRoomById(ws: WebSocket, message: any, roomId: string): void {
-        const { playerId, playerName, playerPhoto } = message;
-        const finalPlayerId = playerId;
+    private async handleJoinRoomById(ws: WebSocket, roomId: string, message: WebSocketMessage): Promise<void> {
+        const {
+            data: { token },
+        } = message;
 
-        if (!roomId || !finalPlayerId) {
-            this.sendMessage(ws, {
-                type: WEBSOCKET_MESSAGE_TYPES.ERROR,
-                message: "Missing roomId or playerId",
-            });
-            return;
-        }
-
-        console.log(`[JOIN_ROOM_BY_ID] Player ${finalPlayerId} attempting to join room ${roomId}`);
+        // Get player info from token
+        const playerInfo = await getPlayerInfo(token);
 
         // Get the room
         const room = this.roomService.getRoom(roomId);
@@ -387,7 +349,7 @@ export class WebSocketService {
         }
 
         // Try to join the room
-        const joinedRoom = this.roomService.joinRoomById(roomId, finalPlayerId, undefined, playerName, playerPhoto);
+        const joinedRoom = this.roomService.joinRoomById(roomId, playerInfo.uid, undefined, playerInfo.name, playerInfo.picture);
         if (!joinedRoom) {
             console.log(`[JOIN_ROOM_BY_ID] Failed to join room ${roomId}`);
             this.sendMessage(ws, {
@@ -398,8 +360,8 @@ export class WebSocketService {
         }
 
         // Add WebSocket connection to room
-        this.roomService.addConnection(roomId, finalPlayerId, ws);
-        console.log(`[JOIN_ROOM_BY_ID] Player ${finalPlayerId} joined room ${roomId}`);
+        this.roomService.addConnection(roomId, playerInfo.uid, ws);
+        console.log(`[JOIN_ROOM_BY_ID] Player ${playerInfo.uid} joined room ${roomId}`);
 
         // Get the appropriate game service based on game type
         const gameService = this.getGameService(joinedRoom.gameType);
@@ -483,7 +445,7 @@ export class WebSocketService {
 
         // Send room data to joining player
         this.sendMessage(ws, {
-            type: WEBSOCKET_MESSAGE_TYPES.ROOM_JOINED,
+            type: WEBSOCKET_MESSAGE_TYPES.ROOM_UPDATE,
             data: {
                 room: this.roomToResponse(joinedRoom),
                 game: this.getGameService(joinedRoom.gameType).getGameUpdate(joinedRoom.game.id),
@@ -494,69 +456,9 @@ export class WebSocketService {
         this.broadcastGameUpdate(roomId);
     }
 
-    /**
-     * Handle get room info request
-     * @param ws - WebSocket connection
-     * @param roomId - Room ID
-     */
-    private handleGetRoomInfo(ws: any, roomId?: string): void {
-        if (!roomId) {
-            this.sendError(ws, "Room ID required");
-            return;
-        }
-
-        try {
-            const room = this.roomService.getRoom(roomId);
-            if (!room) {
-                this.sendError(ws, "Sala no encontrada");
-                return;
-            }
-
-            // Send room info (without sensitive data like password)
-            this.sendMessage(ws, {
-                type: WEBSOCKET_MESSAGE_TYPES.ROOM_INFO,
-                data: {
-                    room: {
-                        id: room.id,
-                        name: room.name,
-                        maxPlayers: room.maxPlayers,
-                        players: room.game?.players || [],
-                        isActive: room.isActive,
-                        isPrivate: room.isPrivate,
-                        maxScore: room.maxScore,
-                        createdAt: room.createdAt,
-                    },
-                },
-            });
-        } catch (error) {
-            console.error("Error in handleGetRoomInfo:", error);
-            this.sendError(ws, "Internal server error");
-        }
-    }
-
     private handleLeaveRoom(_ws: any, playerId?: string, _roomId?: string): void {
         if (playerId) {
             this.roomService.leaveRoom(playerId);
-            this.broadcastToAll({
-                type: WEBSOCKET_MESSAGE_TYPES.ROOM_LIST_UPDATED,
-                data: { rooms: this.roomService.getAllRooms() },
-            });
-        }
-    }
-
-    private handleGetRooms(ws: any, playerId?: string): void {
-        const rooms = this.roomService.getAllRooms();
-
-        if (playerId) {
-            this.sendMessage(ws, {
-                type: WEBSOCKET_MESSAGE_TYPES.ROOM_LIST_UPDATED,
-                data: { rooms },
-            });
-        } else {
-            this.sendMessage(ws, {
-                type: WEBSOCKET_MESSAGE_TYPES.ROOM_LIST_UPDATED,
-                data: { rooms },
-            });
         }
     }
 
@@ -603,7 +505,6 @@ export class WebSocketService {
                 const gameUpdateCopy = structuredClone(gameUpdate);
                 gameUpdateCopy.metadata.players.forEach((player) => {
                     if (player.id !== playerId) {
-                        console.log(`Not sending cards and available actions to player ${player.id}`);
                         player.cards = [];
                         player.availableActions = [];
                     }
@@ -614,30 +515,6 @@ export class WebSocketService {
                 console.error(`❌ Error sending game update to player ${playerId} in room ${roomId}:`, error);
             }
         });
-    }
-
-    private broadcastToAll(message: any): void {
-        const messageStr = JSON.stringify(message);
-        let sentCount = 0;
-        let failedCount = 0;
-
-        this.playerConnections.forEach((ws, playerId) => {
-            if (ws.readyState === 1) {
-                // WebSocket.OPEN
-                try {
-                    ws.send(messageStr);
-                    sentCount++;
-                } catch (error) {
-                    console.error(`❌ Error broadcasting to player ${playerId}:`, error);
-                    failedCount++;
-                }
-            } else {
-                console.warn(`⚠️ Skipping closed connection for player ${playerId}. State: ${ws.readyState}`);
-                failedCount++;
-            }
-        });
-
-        console.log(`📡 Broadcast complete: ${sentCount} sent, ${failedCount} failed`);
     }
 
     private roomToResponse(room: any): any {
