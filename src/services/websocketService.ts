@@ -170,8 +170,6 @@ export class WebSocketService {
     private isRoomEvent(messageType: string): boolean {
         const roomEvents = [
             WEBSOCKET_MESSAGE_TYPES.REGISTER_PLAYER,
-            WEBSOCKET_MESSAGE_TYPES.CREATE_ROOM,
-            WEBSOCKET_MESSAGE_TYPES.JOIN_ROOM,
             WEBSOCKET_MESSAGE_TYPES.JOIN_ROOM_BY_ID,
             WEBSOCKET_MESSAGE_TYPES.GET_ROOM_INFO,
             WEBSOCKET_MESSAGE_TYPES.LEAVE_ROOM,
@@ -195,16 +193,8 @@ export class WebSocketService {
                 this.handleRegisterPlayer(ws, data);
                 break;
 
-            case WEBSOCKET_MESSAGE_TYPES.CREATE_ROOM:
-                this.handleCreateRoom(ws, data);
-                break;
-
-            case WEBSOCKET_MESSAGE_TYPES.JOIN_ROOM:
-                this.handleJoinRoom(ws, data, roomId);
-                break;
-
             case WEBSOCKET_MESSAGE_TYPES.JOIN_ROOM_BY_ID:
-                this.handleJoinRoomById(ws, data, roomId);
+                this.handleJoinRoomById(ws, data, roomId as string);
                 break;
 
             case WEBSOCKET_MESSAGE_TYPES.GET_ROOM_INFO:
@@ -365,149 +355,110 @@ export class WebSocketService {
         });
     }
 
-    private handleCreateRoom(ws: any, data: any): void {
-        const {
-            roomName,
-            playerName,
-            playerId,
-            maxPlayers = 2,
-            isPrivate = false,
-            password,
-            maxScore = 15,
-            gameType = GameType.TRUCO,
-            hasAI = false,
-            aiDifficulty = "medium",
-            playerPhoto,
-        } = data;
+    /**
+     * Handle join room by ID request (for reconnection)
+     * @param ws - WebSocket connection
+     * @param data - Message data
+     * @param roomId - Room ID
+     */
+    private handleJoinRoomById(ws: WebSocket, message: any, roomId: string): void {
+        const { playerId, playerName, playerPhoto } = message;
+        const finalPlayerId = playerId;
 
-        try {
-            console.log(`🔵 Creating room - Player: ${playerName} (${playerId}), Photo: ${playerPhoto || "none"}`);
-            const room = this.roomService.createRoom(roomName, playerName, playerId, maxPlayers, isPrivate, password, maxScore, gameType, hasAI, aiDifficulty, playerPhoto);
-
-            // Store player connection
-            this.playerConnections.set(playerId, ws);
-            this.roomService.addConnection(room.id, playerId, ws);
-
-            // Get the appropriate game service based on game type
-            const gameService = this.getGameService(room.gameType);
-
-            // If AI mode is enabled, add AI player(s) and start game automatically
-            if (hasAI && (gameType === GameType.CHINCHON || gameType === GameType.TRUCO)) {
-                console.log(`🤖 Creating AI player(s) for room ${room.id} with difficulty: ${aiDifficulty}, maxPlayers: ${maxPlayers}`);
-
-                // Add AI player(s) to the game
-                if (gameType === GameType.TRUCO) {
-                    // For Truco, add multiple AI players based on maxPlayers (2 or 4)
-                    (gameService as any).addAIPlayersForTeamPlay(room.game.id, maxPlayers);
-                } else {
-                    // For Chinchón, add multiple AI players based on maxPlayers (2-6)
-                    (gameService as any).addAIPlayersForMultiplayer(room.game.id, maxPlayers, aiDifficulty);
-                }
-
-                // Start the game immediately
-                let startedGame = gameService.startGame(room.game.id);
-
-                // For Truco, we also need to deal the first hand (Chinchón does this automatically in startGame)
-                if (gameType === GameType.TRUCO) {
-                    startedGame = gameService.dealNewHand(startedGame.id);
-                    console.log(`🎴 Dealt first hand for Truco game ${room.id}`);
-                }
-
-                this.roomService.updateRoomGame(room.id, startedGame);
-                this.roomService.setRoomActive(room.id, true);
-                room.game = startedGame;
-                room.isActive = true;
-
-                console.log(`🎮 AI game started automatically for room ${room.id} with ${maxPlayers} players`);
-            }
-
+        if (!roomId || !finalPlayerId) {
             this.sendMessage(ws, {
-                type: WEBSOCKET_MESSAGE_TYPES.ROOM_CREATED,
-                data: {
-                    room: this.roomToResponse(room),
-                    game: this.getGameService(room.gameType).getGameUpdate(room.game.id),
-                },
+                type: WEBSOCKET_MESSAGE_TYPES.ERROR,
+                message: "Missing roomId or playerId",
             });
-
-            this.broadcastToAll({
-                type: WEBSOCKET_MESSAGE_TYPES.ROOM_LIST_UPDATED,
-                data: { rooms: this.roomService.getAllRooms() },
-            });
-
-            // If game was started with AI, trigger AI's first move if needed
-            if (hasAI && (gameType === GameType.CHINCHON || gameType === GameType.TRUCO) && room.isActive) {
-                const gameHandler = this.gameHandlerRegistry.getHandler(gameType);
-                if (gameHandler) {
-                    // Trigger AI turn check after a short delay to ensure client receives game state first
-                    setTimeout(() => {
-                        const currentRoom = this.roomService.getRoom(room.id);
-                        if (currentRoom?.game?.currentHand) {
-                            // For Chinchon, check chinchonState
-                            if (gameType === GameType.CHINCHON && currentRoom.game.currentHand.chinchonState?.currentPlayerId?.startsWith("ia_")) {
-                                console.log(`🤖 Triggering initial AI turn for Chinchon room ${room.id}`);
-                                (gameHandler as any).processAITurnIfNeeded?.(room.id);
-                            }
-                            // For Truco, check currentPlayerId
-                            else if (gameType === GameType.TRUCO && currentRoom.game.currentHand.currentPlayerId?.startsWith("ia_")) {
-                                console.log(`🤖 Triggering initial AI turn for Truco room ${room.id}`);
-                                (gameHandler as any).processAITurnIfNeeded?.(room.id);
-                            }
-                        }
-                    }, 500);
-                }
-            }
-
-            this.broadcastGameUpdate(room.id);
-        } catch (error) {
-            console.log(`Error!`, error);
-            this.sendError(ws, "Error creating room");
-        }
-    }
-
-    private handleJoinRoom(ws: any, data: any, roomId?: string): void {
-        if (!roomId) {
-            this.sendError(ws, "Room ID required");
             return;
         }
 
-        const { playerName, playerId, password, playerPhoto } = data;
+        console.log(`[JOIN_ROOM_BY_ID] Player ${finalPlayerId} attempting to join room ${roomId}`);
 
-        try {
-            console.log(`🔵 Joining room - Player: ${playerName} (${playerId}), Photo: ${playerPhoto || "none"}`);
-            const room = this.roomService.joinRoom(roomId, playerName, playerId, password, playerPhoto);
-            if (!room) {
-                this.sendError(ws, "Error joining room (room full, not found, or incorrect password)");
-                return;
+        // Get the room
+        const room = this.roomService.getRoom(roomId);
+        if (!room) {
+            console.log(`[JOIN_ROOM_BY_ID] Room ${roomId} not found`);
+            this.sendMessage(ws, {
+                type: WEBSOCKET_MESSAGE_TYPES.ERROR,
+                message: "Room not found",
+            });
+            return;
+        }
+
+        // Try to join the room
+        const joinedRoom = this.roomService.joinRoomById(roomId, finalPlayerId, undefined, playerName, playerPhoto);
+        if (!joinedRoom) {
+            console.log(`[JOIN_ROOM_BY_ID] Failed to join room ${roomId}`);
+            this.sendMessage(ws, {
+                type: WEBSOCKET_MESSAGE_TYPES.ERROR,
+                message: "Failed to join room. Room may be full or password incorrect.",
+            });
+            return;
+        }
+
+        // Add WebSocket connection to room
+        this.roomService.addConnection(roomId, finalPlayerId, ws);
+        console.log(`[JOIN_ROOM_BY_ID] Player ${finalPlayerId} joined room ${roomId}`);
+
+        // Get the appropriate game service based on game type
+        const gameService = this.getGameService(joinedRoom.gameType);
+
+        // If AI mode is enabled, add AI player(s) and start game automatically
+        if (joinedRoom.hasAI && !joinedRoom.isActive && (joinedRoom.gameType === GameType.CHINCHON || joinedRoom.gameType === GameType.TRUCO)) {
+            console.log(`🤖 Creating AI player(s) for room ${joinedRoom.id} with difficulty: ${joinedRoom.aiDifficulty}, maxPlayers: ${joinedRoom.maxPlayers}`);
+
+            // Add AI player(s) to the game
+            if (joinedRoom.gameType === GameType.TRUCO) {
+                // For Truco, add multiple AI players based on maxPlayers (2 or 4)
+                (gameService as any).addAIPlayersForTeamPlay(joinedRoom.game.id, joinedRoom.maxPlayers);
+            } else {
+                // For Chinchón, add multiple AI players based on maxPlayers (2-6)
+                (gameService as any).addAIPlayersForMultiplayer(joinedRoom.game.id, joinedRoom.maxPlayers, joinedRoom.aiDifficulty);
             }
 
-            // Store player connection
-            this.playerConnections.set(playerId, ws);
-            this.roomService.addConnection(roomId, playerId, ws);
+            // Start the game immediately
+            let startedGame = gameService.startGame(joinedRoom.game.id);
 
-            // Get the player from the game (already has photo and formatted name)
-            const joinedPlayer = room.game.players.find((p: any) => p.id === playerId);
+            // For Truco, we also need to deal the first hand (Chinchón does this automatically in startGame)
+            if (joinedRoom.gameType === GameType.TRUCO) {
+                startedGame = gameService.dealNewHand(startedGame.id);
+                console.log(`🎴 Dealt first hand for Truco game ${joinedRoom.id}`);
+            }
 
-            // Notify all players in room
-            this.broadcastToRoom(roomId, {
-                type: WEBSOCKET_MESSAGE_TYPES.PLAYER_JOINED,
-                data: {
-                    player: joinedPlayer,
-                    game: this.getGameService(room.gameType).getGameUpdate(room.game.id),
-                },
-            });
+            this.roomService.updateRoomGame(joinedRoom.id, startedGame);
+            this.roomService.setRoomActive(joinedRoom.id, true);
+            joinedRoom.game = startedGame;
+            joinedRoom.isActive = true;
 
-            // Send room data to joining player
-            this.sendMessage(ws, {
-                type: WEBSOCKET_MESSAGE_TYPES.ROOM_JOINED,
-                data: {
-                    room: this.roomToResponse(room),
-                    game: this.getGameService(room.gameType).getGameUpdate(room.game.id),
-                },
-            });
+            console.log(`🎮 AI game started automatically for room ${joinedRoom.id} with ${joinedRoom.maxPlayers} players`);
+
+            // If game was started with AI, trigger AI's first move if needed
+            const gameHandler = this.gameHandlerRegistry.getHandler(joinedRoom.gameType);
+            if (gameHandler) {
+                // Trigger AI turn check after a short delay to ensure client receives game state first
+                setTimeout(() => {
+                    const currentRoom = this.roomService.getRoom(joinedRoom.id);
+                    if (currentRoom?.game?.currentHand) {
+                        // For Chinchon, check chinchonState
+                        if (joinedRoom.gameType === GameType.CHINCHON && currentRoom.game.currentHand.chinchonState?.currentPlayerId?.startsWith("ia_")) {
+                            console.log(`🤖 Triggering initial AI turn for Chinchon room ${joinedRoom.id}`);
+                            (gameHandler as any).processAITurnIfNeeded?.(joinedRoom.id);
+                        }
+                        // For Truco, check currentPlayerId
+                        else if (joinedRoom.gameType === GameType.TRUCO && currentRoom.game.currentHand.currentPlayerId?.startsWith("ia_")) {
+                            console.log(`🤖 Triggering initial AI turn for Truco room ${joinedRoom.id}`);
+                            (gameHandler as any).processAITurnIfNeeded?.(joinedRoom.id);
+                        }
+                    }
+                }, 500);
+            }
+        } else {
+            // Check if it should start
 
             // Check if we have enough players to start the game
             // Wait for all players to join (room.maxPlayers)
-            const shouldStart = room.game.players.length >= room.maxPlayers;
+            const shouldStart = joinedRoom.game.players.length >= joinedRoom.maxPlayers;
 
             if (shouldStart && !room.isActive) {
                 const gameService = this.getGameService(room.gameType);
@@ -528,106 +479,19 @@ export class WebSocketService {
                     },
                 });
             }
-
-            this.broadcastToAll({
-                type: WEBSOCKET_MESSAGE_TYPES.ROOM_LIST_UPDATED,
-                data: { rooms: this.roomService.getAllRooms() },
-            });
-
-            this.broadcastGameUpdate(roomId);
-        } catch (error) {
-            this.sendError(ws, "Error joining room");
-        }
-    }
-
-    /**
-     * Handle join room by ID request (for reconnection)
-     * @param ws - WebSocket connection
-     * @param data - Message data
-     * @param roomId - Room ID
-     */
-    private handleJoinRoomById(ws: any, data: any, roomId?: string): void {
-        if (!roomId) {
-            this.sendError(ws, "Room ID required");
-            return;
         }
 
-        const { playerId } = data;
+        // Send room data to joining player
+        this.sendMessage(ws, {
+            type: WEBSOCKET_MESSAGE_TYPES.ROOM_JOINED,
+            data: {
+                room: this.roomToResponse(joinedRoom),
+                game: this.getGameService(joinedRoom.gameType).getGameUpdate(joinedRoom.game.id),
+            },
+        });
 
-        if (!playerId) {
-            this.sendError(ws, "Player ID required");
-            return;
-        }
-
-        try {
-            const { password, playerName, playerPhoto } = data;
-
-            // Check if player is already in the room before joining
-            const existingRoom = this.roomService.getRoom(roomId);
-            const wasAlreadyInRoom = existingRoom?.game?.players?.some((p: any) => p.id === playerId) || false;
-
-            const room = this.roomService.joinRoomById(roomId, playerId, password, playerName, playerPhoto);
-            if (!room) {
-                this.sendError(ws, "Sala no encontrada, room is full, or invalid password");
-                return;
-            }
-
-            // Store player connection
-            this.playerConnections.set(playerId, ws);
-            this.roomService.addConnection(roomId, playerId, ws);
-
-            // Notify all players in room about the new player (if it's a new player)
-            if (!wasAlreadyInRoom && room.game) {
-                // This is a new player joining via direct link
-                const joinedPlayer = room.game.players.find((p: any) => p.id === playerId);
-
-                console.log(`🔵 Player joining room via deep link - ID: ${playerId}, Name: ${joinedPlayer?.name}, Photo: ${joinedPlayer?.photo || "none"}`);
-
-                this.broadcastToRoom(roomId, {
-                    type: WEBSOCKET_MESSAGE_TYPES.PLAYER_JOINED,
-                    data: {
-                        player: joinedPlayer,
-                        game: this.getGameService(room.gameType).getGameUpdate(room.game.id),
-                    },
-                });
-
-                // Check if we have enough players to start the game
-                // Wait for all players to join (room.maxPlayers)
-                const shouldStart = room.game.players.length >= room.maxPlayers;
-
-                if (shouldStart && !room.isActive) {
-                    const gameService = this.getGameService(room.gameType);
-                    const startedGame = gameService.startGame(room.game.id);
-                    const gameWithHand = gameService.dealNewHand(startedGame.id);
-                    this.roomService.updateRoomGame(roomId, gameWithHand);
-                    this.roomService.setRoomActive(roomId, true);
-
-                    // Update room reference
-                    room.game = gameWithHand;
-                    room.isActive = true;
-
-                    this.broadcastToRoom(roomId, {
-                        type: WEBSOCKET_MESSAGE_TYPES.GAME_STARTED,
-                        data: {
-                            room: this.roomToResponse(room),
-                            game: gameService.getGameUpdate(gameWithHand.id),
-                        },
-                    });
-                }
-            }
-
-            // Send room data to joining player
-            this.sendMessage(ws, {
-                type: WEBSOCKET_MESSAGE_TYPES.ROOM_JOINED,
-                data: {
-                    room: this.roomToResponse(room),
-                    game: room.game ? this.getGameService(room.gameType).getGameUpdate(room.game.id) : null,
-                },
-            });
-        } catch (error) {
-            console.error("Error in handleJoinRoomById:", error);
-            this.sendError(ws, "Internal server error");
-        }
+        // Broadcast updated room state to all players in the room
+        this.broadcastGameUpdate(roomId);
     }
 
     /**

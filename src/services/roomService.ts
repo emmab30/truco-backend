@@ -32,6 +32,73 @@ export class RoomService {
         }
     }
 
+    async createRoomHTTP({
+        roomName,
+        playerName,
+        playerId,
+        maxPlayers = 2,
+        isPrivate = false,
+        password,
+        maxScore,
+        gameType = GameType.TRUCO,
+        hasAI = false,
+        aiDifficulty = "medium",
+        playerPhoto,
+    }: any): Promise<Room> {
+        // Validate game type
+        if (!isValidGameType(gameType)) {
+            throw new Error(`Invalid game type: ${gameType}`);
+        }
+
+        const roomId = generateId();
+        const factory = getGameFactory(gameType as any);
+
+        // Use factory to get appropriate max players and score
+        const finalMaxPlayers = Math.min(maxPlayers, factory.getMaxPlayers());
+        const finalMaxScore = maxScore || factory.getDefaultMaxScore();
+
+        // Get the appropriate game service based on game type
+        const gameService = this.getGameService(gameType);
+        const game = gameService.createGame(finalMaxScore, gameType);
+
+        // Update game config with the correct maxPlayers for the room
+        game.gameConfig.maxPlayers = finalMaxPlayers;
+        gameService.updateGame(game);
+
+        // Format player name for privacy (only first name + initial of last name)
+        const formattedPlayerName = formatPlayerName(playerName);
+
+        // Add the creator as the first player
+        let updatedGame = gameService.addPlayerToGame(game.id, playerId, formattedPlayerName, Team.TEAM_1, playerPhoto || undefined);
+
+        // NOTE: AI players are now added in websocketService.ts after room creation
+        // This ensures all AI players use the same aiService instance as the handler
+
+        const room: Room = {
+            id: roomId,
+            name: roomName,
+            game: updatedGame,
+            maxPlayers: finalMaxPlayers,
+            isActive: false, // Will be activated in websocketService after AI players are added
+            connections: new Map(),
+            createdAt: new Date(),
+            isPrivate,
+            ...(isPrivate && password && { password }),
+            maxScore: finalMaxScore,
+            gameType,
+            hasAI,
+            aiDifficulty,
+        };
+
+        this.rooms.set(roomId, room);
+        this.playerRooms.set(playerId, roomId);
+
+        // Log room creation
+        console.log(`🏠 Room created: "${roomName}" | Game: ${gameType} | Players: ${finalMaxPlayers} | Score: ${finalMaxScore} | ${isPrivate ? "Private" : "Public"}`);
+
+        return room;
+    }
+
     /**
      * Create a new room
      * @param roomName - Room name

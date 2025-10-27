@@ -105,12 +105,6 @@ export interface CreateRoomRequest {
     aiDifficulty?: "easy" | "medium" | "hard";
 }
 
-export interface JoinRoomRequest {
-    playerName: string;
-    playerId: string;
-    password?: string;
-}
-
 // ============================================================================
 // WEBSOCKET EVENT TYPES
 // ============================================================================
@@ -131,8 +125,6 @@ export interface WebSocketMessage {
 export interface WebSocketEvents {
     // Generic room events (Client to Server)
     REGISTER_PLAYER: { playerId: string };
-    CREATE_ROOM: CreateRoomRequest;
-    JOIN_ROOM: JoinRoomRequest;
     LEAVE_ROOM: {};
     GET_ROOMS: {};
 

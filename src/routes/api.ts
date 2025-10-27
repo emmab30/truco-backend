@@ -7,8 +7,9 @@ import statsRoutes from "@/routes/stats";
 import roomRoutes from "@/routes/rooms";
 import telegramRoutes from "@/routes/telegram";
 import healthRoutes from "@/routes/health";
+import { WebSocketService } from "@/services/websocketService";
 
-export function createApiRoutes(_trucoGameService: TrucoGameService, _chinchonGameService: ChinchonGameService, roomService: RoomService) {
+export function createApiRoutes(_: WebSocketService, _trucoGameService: TrucoGameService, _chinchonGameService: ChinchonGameService, roomService: RoomService) {
     const router = Router();
 
     // ============================================================================

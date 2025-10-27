@@ -45,9 +45,6 @@ const trucoGameService = new TrucoGameService();
 const chinchonGameService = new ChinchonGameService();
 const roomService = new RoomService(trucoGameService, chinchonGameService);
 
-// API routes
-app.use("/api", createApiRoutes(trucoGameService, chinchonGameService, roomService));
-
 // ============================================================================
 // WEBSOCKET SERVER SETUP
 // ============================================================================
@@ -57,6 +54,9 @@ const wss = new WebSocketServer({
     path: "/ws",
 });
 const wsService = new WebSocketService(trucoGameService, chinchonGameService, roomService);
+
+// API routes
+app.use("/api", createApiRoutes(wsService, trucoGameService, chinchonGameService, roomService));
 
 // WebSocket connection handling
 wss.on("connection", (ws, req) => {
