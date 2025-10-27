@@ -852,16 +852,16 @@ export function callTruco(game: Game, playerId: string, call: TrucoCall): Game {
     console.log(`🎲 callTruco: ${call}, isEscalation: ${isEscalation}, previous accepted: ${currentTrucoState.accepted}`);
 
     // Determine who should respond:
-    // - If this is an escalation (retruco/vale-cuatro), the ORIGINAL caller must respond
+    // - If this is an escalation (retruco/vale-cuatro), the CURRENT caller (who last called) must respond
     // - If this is a new truco, the "pie" (last player) of the opposite team responds
     let nextResponder: string | null = null;
     let originalCaller: string | null = null;
 
     if (isEscalation && currentTrucoState.originalCaller) {
-        // This is an escalation - the original caller must respond
-        nextResponder = currentTrucoState.originalCaller;
+        // This is an escalation - the current caller (who last called) must respond
+        nextResponder = currentTrucoState.currentCaller;
         originalCaller = currentTrucoState.originalCaller;
-        console.log(`🎲 callTruco: Escalation detected, originalCaller ${originalCaller} must respond`);
+        console.log(`🎲 callTruco: Escalation detected, currentCaller ${currentTrucoState.currentCaller} must respond`);
     } else {
         // This is a new truco - the "pie" of the opposite team responds
         const piePlayer = getPieOfOppositeTeam(game.players, playerId);
@@ -960,18 +960,18 @@ export function respondTruco(game: Game, playerId: string, response: TrucoRespon
 
     // Handle escalation calls (retruco, vale-cuatro)
     if (response === TrucoResponse.RETRUCO || response === TrucoResponse.VALE_CUATRO) {
-        // When escalating, the originalCaller (who started the truco) must respond
-        const originalCaller = currentTrucoState.originalCaller || currentTrucoState.currentCaller;
+        // When escalating, the currentCaller (who last called truco/retruco) must respond
+        const nextResponderId = currentTrucoState.currentCaller;
         
-        console.log(`🎲 respondTruco: Escalation to ${response}, originalCaller=${originalCaller} must respond`);
+        console.log(`🎲 respondTruco: Escalation to ${response}, currentCaller=${nextResponderId} must respond`);
         
         const updatedTrucoState = {
             ...currentTrucoState,
             isActive: true,
             currentCall: response === TrucoResponse.RETRUCO ? TrucoCall.RETRUCO : TrucoCall.VALE_CUATRO,
             currentCaller: playerId,
-            originalCaller: originalCaller, // Keep the original caller
-            nextResponder: originalCaller, // Original caller must respond to escalation
+            originalCaller: currentTrucoState.originalCaller, // Keep the original caller
+            nextResponder: nextResponderId, // Current caller must respond to escalation
             responses: new Map(),
             accepted: true, // Mark as accepted since we're escalating
         };
