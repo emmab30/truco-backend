@@ -343,15 +343,35 @@ function checkWinConditionsAfterDiscard(chinchonState: ChinchonState, currentPla
 
     if (chinchonCombo) {
         console.log("🎯 CHINCHÓN DETECTED! 7-card sequence of same suit");
-        
+
         const roundScores = new Map<string, number>();
         roundScores.set(playerId, -10); // Winner gets -10
-        
+
+        // Track updated winner combinations after sneaking all losers' cards
+        let updatedWinnerCombinations = combinations;
+        const allSneakedCardIds = new Map<string, string[]>(); // Map playerId -> sneakedCardIds
+
         // Calculate scores for ALL other players
         allPlayers.forEach((player) => {
             if (player.id !== playerId) {
-                const playerScore = calculateLosingPlayerScore(chinchonState, player);
-                roundScores.set(player.id, playerScore);
+                const loserCombinations = chinchonState.combinations.get(player.id) || [];
+                const result = calculateScoreWithSneaking(player.cards as Card[], loserCombinations, updatedWinnerCombinations);
+                roundScores.set(player.id, result.finalScore);
+                // Update winner combinations with sneaked cards
+                updatedWinnerCombinations = result.updatedWinnerCombinations;
+                // Track which cards were sneaked from this player
+                allSneakedCardIds.set(player.id, result.sneakedCardIds);
+            }
+        });
+
+        // Update winner's combinations in state to show sneaked cards
+        chinchonState.combinations.set(playerId, updatedWinnerCombinations);
+
+        // Remove sneaked cards from losers' hands
+        allPlayers.forEach((player) => {
+            if (player.id !== playerId) {
+                const sneakedIds = allSneakedCardIds.get(player.id) || [];
+                player.cards = player.cards.filter((card: Card) => !sneakedIds.includes(card.id));
             }
         });
 
@@ -369,15 +389,35 @@ function checkWinConditionsAfterDiscard(chinchonState: ChinchonState, currentPla
         // Must be exactly 7 cards in combinations (e.g., 3+4)
         if (totalCombinedCards === 7) {
             console.log("🎯 CLOSE WITH 7 CARDS! All cards combined");
-            
+
             const roundScores = new Map<string, number>();
             roundScores.set(playerId, -10); // Winner gets -10
-            
+
+            // Track updated winner combinations after sneaking all losers' cards
+            let updatedWinnerCombinations = combinations;
+            const allSneakedCardIds = new Map<string, string[]>(); // Map playerId -> sneakedCardIds
+
             // Calculate scores for ALL other players
             allPlayers.forEach((player) => {
                 if (player.id !== playerId) {
-                    const playerScore = calculateLosingPlayerScore(chinchonState, player);
-                    roundScores.set(player.id, playerScore);
+                    const loserCombinations = chinchonState.combinations.get(player.id) || [];
+                    const result = calculateScoreWithSneaking(player.cards as Card[], loserCombinations, updatedWinnerCombinations);
+                    roundScores.set(player.id, result.finalScore);
+                    // Update winner combinations with sneaked cards
+                    updatedWinnerCombinations = result.updatedWinnerCombinations;
+                    // Track which cards were sneaked from this player
+                    allSneakedCardIds.set(player.id, result.sneakedCardIds);
+                }
+            });
+
+            // Update winner's combinations in state to show sneaked cards
+            chinchonState.combinations.set(playerId, updatedWinnerCombinations);
+
+            // Remove sneaked cards from losers' hands
+            allPlayers.forEach((player) => {
+                if (player.id !== playerId) {
+                    const sneakedIds = allSneakedCardIds.get(player.id) || [];
+                    player.cards = player.cards.filter((card: Card) => !sneakedIds.includes(card.id));
                 }
             });
 
@@ -393,6 +433,121 @@ function checkWinConditionsAfterDiscard(chinchonState: ChinchonState, currentPla
     return {
         hasWon: false,
         roundScores: new Map(),
+    };
+}
+
+interface SneakResult {
+    finalScore: number;
+    updatedWinnerCombinations: Combination[];
+    sneakedCardIds: string[]; // IDs de las cartas que se colaron
+}
+
+function calculateScoreWithSneaking(loserCards: Card[], loserCombinations: Combination[], winnerCombinations: Combination[]): SneakResult {
+    // Obtener cartas sueltas del perdedor
+    const combinedIds = new Set(loserCombinations.flatMap((c) => c.cards.map((card) => card.id)));
+    const looseCards = loserCards.filter((card) => !combinedIds.has(card.id));
+
+    console.log(`\n🎴 === INTENTANDO COLAR CARTAS ===`);
+    console.log(`🎴 Cartas sueltas del perdedor: ${looseCards.length}`);
+    looseCards.forEach((card) => {
+        console.log(`  - ${card.displayValue}${card.suit} (${card.chinchonValue} pts)`);
+    });
+
+    console.log(`\n🎯 Combinaciones del ganador disponibles: ${winnerCombinations.length}`);
+    winnerCombinations.forEach((combo, idx) => {
+        const type = combo.type === "sequence" ? "Escalera" : "Grupo";
+        const cards = combo.cards.map((c) => `${c.displayValue}${c.suit}`).join(",");
+        console.log(`  ${idx + 1}. ${type}: [${cards}]`);
+    });
+
+    // Ordenar por valor (intentar colar primero las de menor valor)
+    looseCards.sort((a, b) => (a.chinchonValue || 0) - (b.chinchonValue || 0));
+
+    // Copiar combinaciones del ganador
+    const winnerCombosCopy = JSON.parse(JSON.stringify(winnerCombinations)) as Combination[];
+    const remainingCards: Card[] = [];
+    const sneakedCardIds: string[] = []; // Track IDs of sneaked cards
+    let totalSneaked = 0;
+    let totalPointsSaved = 0;
+
+    // Intentar colar cada carta
+    for (const card of looseCards) {
+        let wasAdded = false;
+
+        for (let i = 0; i < winnerCombosCopy.length; i++) {
+            const combo = winnerCombosCopy[i];
+            if (!combo) continue;
+
+            if (combo.type === "sequence") {
+                // Intentar agregar a escalera (mismo palo)
+                if (combo.cards[0]?.suit === card.suit) {
+                    const values = combo.cards.map((c) => c.value).sort((a, b) => a - b);
+                    const minVal = values[0] || 0;
+                    const maxVal = values[values.length - 1] || 0;
+
+                    // Puede ir al inicio
+                    if (card.value === minVal - 1) {
+                        const sneakedCard = { ...card, isSneaked: true }; // Mark as sneaked
+                        combo.cards.unshift(sneakedCard);
+                        wasAdded = true;
+                        sneakedCardIds.push(card.id);
+                        console.log(`  ✅ ${card.displayValue}${card.suit} colada al INICIO de escalera #${i + 1}`);
+                        console.log(`     Nueva escalera: [${combo.cards.map((c) => `${c.displayValue}${c.suit}`).join(",")}]`);
+                        totalSneaked++;
+                        totalPointsSaved += card.chinchonValue || 0;
+                        break;
+                    }
+                    // Puede ir al final
+                    else if (card.value === maxVal + 1) {
+                        const sneakedCard = { ...card, isSneaked: true }; // Mark as sneaked
+                        combo.cards.push(sneakedCard);
+                        wasAdded = true;
+                        sneakedCardIds.push(card.id);
+                        console.log(`  ✅ ${card.displayValue}${card.suit} colada al FINAL de escalera #${i + 1}`);
+                        console.log(`     Nueva escalera: [${combo.cards.map((c) => `${c.displayValue}${c.suit}`).join(",")}]`);
+                        totalSneaked++;
+                        totalPointsSaved += card.chinchonValue || 0;
+                        break;
+                    }
+                }
+            } else if (combo.type === "group") {
+                // Intentar agregar a grupo (mismo valor, diferente palo, máximo 4)
+                const groupValue = combo.cards[0]?.value;
+                if (groupValue === card.value && !combo.cards.some((c) => c.suit === card.suit) && combo.cards.length < 4) {
+                    const sneakedCard = { ...card, isSneaked: true }; // Mark as sneaked
+                    combo.cards.push(sneakedCard);
+                    wasAdded = true;
+                    sneakedCardIds.push(card.id);
+                    console.log(`  ✅ ${card.displayValue}${card.suit} colada en grupo #${i + 1}`);
+                    console.log(`     Nuevo grupo: [${combo.cards.map((c) => `${c.displayValue}${c.suit}`).join(",")}]`);
+                    totalSneaked++;
+                    totalPointsSaved += card.chinchonValue || 0;
+                    break;
+                }
+            }
+        }
+
+        if (!wasAdded) {
+            remainingCards.push(card);
+            console.log(`  ❌ ${card.displayValue}${card.suit} NO se pudo colar`);
+        }
+    }
+
+    // Calcular puntos de las cartas que no se pudieron colar
+    const finalPoints = remainingCards.reduce((sum, card) => sum + (card.chinchonValue || 0), 0);
+    const originalPoints = looseCards.reduce((sum, card) => sum + (card.chinchonValue || 0), 0);
+
+    console.log(`\n📊 RESUMEN:`);
+    console.log(`  Cartas coladas: ${totalSneaked}/${looseCards.length}`);
+    console.log(`  Puntos ahorrados: ${totalPointsSaved}`);
+    console.log(`  Puntos originales: ${originalPoints}`);
+    console.log(`  Puntos finales: ${finalPoints}`);
+    console.log(`🎴 === FIN COLAR CARTAS ===\n`);
+
+    return {
+        finalScore: finalPoints,
+        updatedWinnerCombinations: winnerCombosCopy,
+        sneakedCardIds, // Return IDs of sneaked cards
     };
 }
 
@@ -446,32 +601,46 @@ export function cutWithCard(game: Game, playerId: string, cardId: string): Game 
 
     const updatedRoundScores = new Map<string, number>();
     updatedRoundScores.set(playerId, cuttingPlayerScore);
-    
+
+    // Track updated winner combinations after sneaking all losers' cards
+    let updatedWinnerCombinations = combinations;
+    const allSneakedCardIds = new Map<string, string[]>(); // Map playerId -> sneakedCardIds
+
     // Calculate scores for ALL other players
     if (game.currentHand) {
         game.players.forEach((p) => {
             if (p.id !== playerId) {
-                const playerScore = calculateLosingPlayerScore(game.currentHand!.chinchonState, p);
-                updatedRoundScores.set(p.id, playerScore);
-                console.log(`🎯 Player ${p.name} score: ${playerScore}`);
+                const loserCombinations = game.currentHand!.chinchonState.combinations.get(p.id) || [];
+                const result = calculateScoreWithSneaking(p.cards as Card[], loserCombinations, updatedWinnerCombinations);
+                updatedRoundScores.set(p.id, result.finalScore);
+                // Update winner combinations with sneaked cards
+                updatedWinnerCombinations = result.updatedWinnerCombinations;
+                // Track which cards were sneaked from this player
+                allSneakedCardIds.set(p.id, result.sneakedCardIds);
+                console.log(`🎯 Player ${p.name} score: ${result.finalScore}`);
             }
         });
     }
+
+    // Update winner's combinations in state to show sneaked cards
+    const updatedCombinationsMap = new Map(game.currentHand.chinchonState.combinations);
+    updatedCombinationsMap.set(playerId, updatedWinnerCombinations);
 
     const updatedChinchonState = {
         ...game.currentHand.chinchonState,
         roundScores: updatedRoundScores,
         isRoundClosed: true,
         roundWinner: playerId,
+        combinations: updatedCombinationsMap,
     };
 
     console.log(`🎯 Cut scores - Cutter: ${cuttingPlayerScore}`);
 
-    // Update players' scores and remove cutting card
+    // Update players' scores and remove cutting card + sneaked cards
     const updatedPlayers = game.players.map((p) => {
         const scoreChange = updatedRoundScores.get(p.id) || 0;
         const newScore = (p.totalScore || 0) + scoreChange;
-        
+
         if (p.id === playerId) {
             return {
                 ...p,
@@ -479,8 +648,11 @@ export function cutWithCard(game: Game, playerId: string, cardId: string): Game 
                 totalScore: newScore,
             };
         } else {
+            // Remove sneaked cards from losers
+            const sneakedIds = allSneakedCardIds.get(p.id) || [];
             return {
                 ...p,
+                cards: p.cards.filter((c) => !sneakedIds.includes(c.id)),
                 totalScore: newScore,
             };
         }
@@ -521,31 +693,56 @@ export function closeRound(game: Game, playerId: string): Game {
 
     const updatedRoundScores = new Map(game.currentHand.chinchonState.roundScores);
     updatedRoundScores.set(playerId, finalScore);
-    
+
+    // Track updated winner combinations after sneaking all losers' cards
+    let updatedWinnerCombinations = combinations;
+    const allSneakedCardIds = new Map<string, string[]>(); // Map playerId -> sneakedCardIds
+
     // Calculate scores for ALL other players
     if (game.currentHand) {
         game.players.forEach((p) => {
             if (p.id !== playerId) {
-                const otherPlayerScore = calculateLosingPlayerScore(game.currentHand!.chinchonState, p);
-                updatedRoundScores.set(p.id, otherPlayerScore);
+                const loserCombinations = game.currentHand!.chinchonState.combinations.get(p.id) || [];
+                const result = calculateScoreWithSneaking(p.cards as Card[], loserCombinations, updatedWinnerCombinations);
+                updatedRoundScores.set(p.id, result.finalScore);
+                // Update winner combinations with sneaked cards
+                updatedWinnerCombinations = result.updatedWinnerCombinations;
+                // Track which cards were sneaked from this player
+                allSneakedCardIds.set(p.id, result.sneakedCardIds);
             }
         });
     }
+
+    // Update winner's combinations in state to show sneaked cards
+    const updatedCombinationsMap = new Map(game.currentHand.chinchonState.combinations);
+    updatedCombinationsMap.set(playerId, updatedWinnerCombinations);
 
     const updatedChinchonState = {
         ...game.currentHand.chinchonState,
         roundScores: updatedRoundScores,
         isRoundClosed: true,
         roundWinner: playerId,
+        combinations: updatedCombinationsMap,
     };
 
     const updatedPlayers = game.players.map((p) => {
         const scoreChange = updatedRoundScores.get(p.id) || 0;
         const newScore = (p.totalScore || 0) + scoreChange;
-        return {
-            ...p,
-            totalScore: newScore,
-        };
+
+        if (p.id === playerId) {
+            return {
+                ...p,
+                totalScore: newScore,
+            };
+        } else {
+            // Remove sneaked cards from losers
+            const sneakedIds = allSneakedCardIds.get(p.id) || [];
+            return {
+                ...p,
+                cards: p.cards.filter((c: Card) => !sneakedIds.includes(c.id)),
+                totalScore: newScore,
+            };
+        }
     });
 
     return {
@@ -572,14 +769,14 @@ export function closeRound(game: Game, playerId: string): Game {
 export function findCombinations(cards: Card[]): Combination[] {
     // Step 1: Generate all possible combinations
     const allPossibleCombinations = generateAllPossibleCombinations(cards);
-    
+
     if (allPossibleCombinations.length === 0) {
         return [];
     }
 
     // Step 2: Find the best non-overlapping set
     const bestSet = findBestCombinationSet(cards, allPossibleCombinations);
-    
+
     return bestSet;
 }
 
@@ -618,14 +815,14 @@ function findAllSequences(cards: Card[]): Combination[] {
     // For each suit, find all possible sequences
     Object.values(suitGroups).forEach((suitCards) => {
         if (!suitCards) return;
-        
+
         const sortedCards = suitCards.sort((a, b) => a.value - b.value);
 
         // Find all sequences of length 3 or more
         for (let start = 0; start < sortedCards.length; start++) {
             for (let end = start + 2; end < sortedCards.length; end++) {
                 const potentialSequence = sortedCards.slice(start, end + 1);
-                
+
                 // Check if it's a valid sequence (consecutive values)
                 let isValid = true;
                 for (let i = 1; i < potentialSequence.length; i++) {
@@ -703,15 +900,15 @@ function getCombinationsOfSize(arr: Card[], size: number): Card[][] {
     if (size === 1) {
         return arr.map((item) => [item]);
     }
-    
+
     const result: Card[][] = [];
-    
+
     function backtrack(start: number, current: Card[]) {
         if (current.length === size) {
             result.push([...current]);
             return;
         }
-        
+
         for (let i = start; i < arr.length; i++) {
             const card = arr[i];
             if (card) {
@@ -721,7 +918,7 @@ function getCombinationsOfSize(arr: Card[], size: number): Card[][] {
             }
         }
     }
-    
+
     backtrack(0, []);
     return result;
 }
@@ -733,10 +930,8 @@ function getCombinationsOfSize(arr: Card[], size: number): Card[][] {
  */
 function findBestCombinationSet(cards: Card[], allCombinations: Combination[]): Combination[] {
     // PRIORITY 1: Check for 7-card chinchón (winning hand)
-    const chinchon = allCombinations.find(
-        (combo) => combo.type === "sequence" && combo.cards.length === 7
-    );
-    
+    const chinchon = allCombinations.find((combo) => combo.type === "sequence" && combo.cards.length === 7);
+
     if (chinchon) {
         // 7-card chinchón always wins, return it immediately
         return [chinchon];
@@ -754,8 +949,7 @@ function findBestCombinationSet(cards: Card[], allCombinations: Combination[]): 
         const unusedPoints = unusedCards.reduce((sum, card) => sum + (card.chinchonValue || 0), 0);
 
         // Update best set if this is better
-        if (unusedPoints < minUnusedPoints || 
-            (unusedPoints === minUnusedPoints && currentSet.length > bestSet.length)) {
+        if (unusedPoints < minUnusedPoints || (unusedPoints === minUnusedPoints && currentSet.length > bestSet.length)) {
             minUnusedPoints = unusedPoints;
             bestSet = [...currentSet];
         }
@@ -769,15 +963,15 @@ function findBestCombinationSet(cards: Card[], allCombinations: Combination[]): 
         for (let i = index; i < allCombinations.length; i++) {
             const combo = allCombinations[i];
             if (!combo) continue;
-            
+
             // Check if any card in this combination is already used
             const hasOverlap = combo.cards.some((card) => usedCardIds.has(card.id));
-            
+
             if (!hasOverlap) {
                 // Add this combination to current set
                 const newUsedCardIds = new Set(usedCardIds);
                 combo.cards.forEach((card) => newUsedCardIds.add(card.id));
-                
+
                 currentSet.push(combo);
                 backtrack(i + 1, currentSet, newUsedCardIds);
                 currentSet.pop();
