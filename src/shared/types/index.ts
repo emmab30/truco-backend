@@ -123,18 +123,14 @@ export interface WebSocketMessage {
     context?: UserContext; // User context
 }
 export interface WebSocketEvents {
-    // Generic room events (Client to Server)
-    LEAVE_ROOM: {};
 
-    // Generic server responses (Server to Client)
-    ROOM_CREATED: { room: Room };
+    // Server to client
     ROOM_UPDATE: { room: Room };
     ERROR: { message: string };
-
-    // Game updates (Server to Client)
     GAME_UPDATE: { game: BaseGame };
 
-    // Game-specific events will be defined in game-specific type files
+    // Client to server
+    LEAVE_ROOM: {};
     [key: string]: any;
 }
 

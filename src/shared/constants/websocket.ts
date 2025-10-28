@@ -9,7 +9,6 @@ export const WEBSOCKET_MESSAGE_TYPES = {
     LEAVE_ROOM: "LEAVE_ROOM",
 
     // ========== Server to Client - ROOM MANAGEMENT ==========
-    ROOM_CREATED: "ROOM_CREATED",
     ROOM_UPDATE: "ROOM_UPDATE",
     PLAYER_DISCONNECTED: "PLAYER_DISCONNECTED",
 
