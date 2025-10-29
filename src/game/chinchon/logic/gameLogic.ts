@@ -447,13 +447,13 @@ function calculateScoreWithSneaking(loserCards: Card[], loserCombinations: Combi
     const combinedIds = new Set(loserCombinations.flatMap((c) => c.cards.map((card) => card.id)));
     const looseCards = loserCards.filter((card) => !combinedIds.has(card.id));
 
-    console.log(`\n🎴 === INTENTANDO COLAR CARTAS ===`);
-    console.log(`🎴 Cartas sueltas del perdedor: ${looseCards.length}`);
+    /* console.log(`\n🎴 === INTENTANDO COLAR CARTAS ===`);
+    console.log(`🎴 Cartas sueltas del perdedor: ${looseCards.length}`); */
     looseCards.forEach((card) => {
         console.log(`  - ${card.displayValue}${card.suit} (${card.chinchonValue} pts)`);
     });
 
-    console.log(`\n🎯 Combinaciones del ganador disponibles: ${winnerCombinations.length}`);
+    /* console.log(`\n🎯 Combinaciones del ganador disponibles: ${winnerCombinations.length}`); */
     winnerCombinations.forEach((combo, idx) => {
         const type = combo.type === "sequence" ? "Escalera" : "Grupo";
         const cards = combo.cards.map((c) => `${c.displayValue}${c.suit}`).join(",");
@@ -549,13 +549,6 @@ function calculateScoreWithSneaking(loserCards: Card[], loserCombinations: Combi
         updatedWinnerCombinations: winnerCombosCopy,
         sneakedCardIds, // Return IDs of sneaked cards
     };
-}
-
-function calculateLosingPlayerScore(chinchonState: ChinchonState, losingPlayer: Player): number {
-    const losingPlayerCombinations = chinchonState.combinations.get(losingPlayer.id) || [];
-    const losingPlayerCombinedCardIds = new Set(losingPlayerCombinations.flatMap((c: any) => c.cards.map((card: any) => card.id)));
-    const losingPlayerUncombinedCards = losingPlayer.cards.filter((card: any) => !losingPlayerCombinedCardIds.has(card.id));
-    return losingPlayerUncombinedCards.reduce((sum: number, card: any) => sum + (card.chinchonValue || 0), 0);
 }
 
 // ============================================================================
