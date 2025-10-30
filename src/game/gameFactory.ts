@@ -1,12 +1,13 @@
 import { Game } from "@/shared/types/truco";
 import { createGame as createTrucoGame } from "./truco";
+import { createGame as createMentirosoGame } from "./mentiroso";
 import { GameType } from "@/shared/constants";
 
 // Game type definitions - now using enum from constants
 
 // Game factory interface
 export interface GameFactory {
-    createGame(maxScore?: number): Game;
+    createGame(maxScore?: number): any; // Using any since different games have different structures
     getGameType(): GameType;
     getMaxPlayers(): number;
     getMinPlayers(): number;
@@ -98,14 +99,49 @@ export class ChinchonGameFactory implements GameFactory {
     }
 }
 
+// Mentiroso game factory
+export class MentirosoGameFactory implements GameFactory {
+    getGameType(): GameType {
+        return GameType.MENTIROSO;
+    }
+
+    getMaxPlayers(): number {
+        return 6;
+    }
+
+    getMinPlayers(): number {
+        return 3;
+    }
+
+    getDefaultMaxScore(): number {
+        return 0; // El Mentiroso no usa maxScore
+    }
+
+    getGameRules(): string[] {
+        return [
+            'Objetivo: ser el primero en quedarse sin cartas',
+            'Tira de 1 a 4 cartas boca abajo del mismo valor',
+            'Puedes mentir sobre el valor de las cartas',
+            'Cualquier jugador puede desafiarte diciendo "¡Miente!"',
+            'Si mentías, recibes todas las cartas de la mesa',
+            'Si decías la verdad, quien te desafió recibe las cartas'
+        ];
+    }
+
+    createGame(_maxScore?: number): any {
+        return createMentirosoGame();
+    }
+}
+
 // Game factory registry
 const gameFactories: Map<GameType, GameFactory> = new Map([
     [GameType.TRUCO, new TrucoGameFactory()],
     [GameType.CHINCHON, new ChinchonGameFactory()],
+    [GameType.MENTIROSO, new MentirosoGameFactory()],
 ]);
 
 // Factory function to create games
-export function createGameByType(gameType: GameType, maxScore?: number): Game {
+export function createGameByType(gameType: GameType, maxScore?: number): any {
     const factory = gameFactories.get(gameType);
     if (!factory) {
         throw new Error(`Unknown game type: ${gameType}`);

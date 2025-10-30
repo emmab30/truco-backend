@@ -13,6 +13,7 @@ import { SERVER_CONFIG } from "@/shared/constants";
 import { WebSocketService } from "@/services/websocketService";
 import { TrucoGameService } from "@/services/trucoGameService";
 import { ChinchonGameService } from "@/services/chinchonGameService";
+import { MentirosoGameService } from "@/services/mentirosoGameService";
 import { RoomService } from "@/services/roomService";
 import { createApiRoutes } from "@/routes/api";
 
@@ -43,7 +44,8 @@ app.use(express.urlencoded({ extended: true }));
 // Initialize services
 const trucoGameService = new TrucoGameService();
 const chinchonGameService = new ChinchonGameService();
-const roomService = new RoomService(trucoGameService, chinchonGameService);
+const mentirosoGameService = new MentirosoGameService();
+const roomService = new RoomService(trucoGameService, chinchonGameService, mentirosoGameService);
 
 // API routes
 app.use("/api", createApiRoutes(trucoGameService, chinchonGameService, roomService));
@@ -56,7 +58,7 @@ const wss = new WebSocketServer({
     server,
     path: "/ws",
 });
-const wsService = new WebSocketService(trucoGameService, chinchonGameService, roomService);
+const wsService = new WebSocketService(trucoGameService, chinchonGameService, mentirosoGameService, roomService);
 
 // WebSocket connection handling
 wss.on("connection", (ws, req) => {
