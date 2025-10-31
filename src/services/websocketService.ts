@@ -2,10 +2,12 @@ import { UserContext, WebSocketMessage } from "@/shared/types";
 import { WEBSOCKET_MESSAGE_TYPES, GameType } from "@/shared/constants";
 import { TrucoGameService } from "./trucoGameService";
 import { ChinchonGameService } from "./chinchonGameService";
+import { MentirosoGameService } from "./mentirosoGameService";
 import { RoomService } from "./roomService";
 import { GameHandlerRegistry } from "@/game/handlers/GameHandlerRegistry";
 import { TrucoGameHandler } from "@/game/handlers/TrucoGameHandler";
 import { ChinchonGameHandler } from "@/game/handlers/ChinchonGameHandler";
+import { MentirosoGameHandler } from "@/game/handlers/MentirosoGameHandler";
 import { TrucoGame } from "@/game/truco";
 
 /**
@@ -20,14 +22,20 @@ export class WebSocketService {
     private gameHandlerRegistry: GameHandlerRegistry;
     private disconnectTimeouts: Map<string, NodeJS.Timeout> = new Map(); // playerId -> timeout for delayed disconnect
 
-    constructor(private trucoGameService: TrucoGameService, private chinchonGameService: ChinchonGameService, private roomService: RoomService) {
-        // chinchonGameService is used indirectly through the ChinchonGameHandler
+    constructor(
+        private trucoGameService: TrucoGameService,
+        private chinchonGameService: ChinchonGameService,
+        private mentirosoGameService: MentirosoGameService,
+        private roomService: RoomService
+    ) {
+        // Game services are used indirectly through their handlers
         // Initialize game handler registry
         this.gameHandlerRegistry = new GameHandlerRegistry();
 
         // Set WebSocket service reference in game services
         trucoGameService.setWebSocketService(this);
         chinchonGameService.setWebSocketService(this);
+        mentirosoGameService.setWebSocketService(this);
 
         // Register Truco game handler
         const trucoHandler = new TrucoGameHandler(trucoGameService, roomService, this);
@@ -36,6 +44,10 @@ export class WebSocketService {
         // Register Chinchón game handler
         const chinchonHandler = new ChinchonGameHandler(this.chinchonGameService, roomService, this);
         this.gameHandlerRegistry.registerHandler(GameType.CHINCHON, chinchonHandler);
+
+        // Register Mentiroso game handler
+        const mentirosoHandler = new MentirosoGameHandler(this.mentirosoGameService, roomService, this);
+        this.gameHandlerRegistry.registerHandler(GameType.MENTIROSO, mentirosoHandler);
     }
 
     /**
@@ -59,6 +71,8 @@ export class WebSocketService {
                 return this.trucoGameService;
             case GameType.CHINCHON:
                 return this.chinchonGameService;
+            case GameType.MENTIROSO:
+                return this.mentirosoGameService;
             default:
                 return this.trucoGameService; // Default to Truco
         }

@@ -158,3 +158,4 @@ export interface WebSocketEvents {
 
 export * as TrucoTypes from "./truco";
 export * as ChinchonTypes from "./chinchon";
+export * as MentirosoTypes from "./mentiroso";

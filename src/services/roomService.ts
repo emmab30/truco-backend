@@ -2,6 +2,7 @@ import { Room } from "@/shared/types";
 import { RoomResponse, Team } from "@/shared/types/truco";
 import { TrucoGameService } from "@/services/trucoGameService";
 import { ChinchonGameService } from "@/services/chinchonGameService";
+import { MentirosoGameService } from "@/services/mentirosoGameService";
 import { generateId, formatPlayerName } from "@/shared/utils/common";
 import { getGameFactory, isValidGameType } from "@/game/gameFactory";
 import { GameType } from "@/shared/constants";
@@ -16,7 +17,11 @@ export class RoomService {
     private playerRooms: Map<string, string> = new Map(); // playerId -> roomId
     private aiService: ChinchonAIService = new ChinchonAIService();
 
-    constructor(private trucoGameService: TrucoGameService, private chinchonGameService: ChinchonGameService) {}
+    constructor(
+        private trucoGameService: TrucoGameService,
+        private chinchonGameService: ChinchonGameService,
+        private mentirosoGameService: MentirosoGameService
+    ) {}
 
     /**
      * Get the appropriate game service based on game type
@@ -27,6 +32,8 @@ export class RoomService {
                 return this.trucoGameService;
             case GameType.CHINCHON:
                 return this.chinchonGameService;
+            case GameType.MENTIROSO:
+                return this.mentirosoGameService;
             default:
                 return this.trucoGameService; // Default to Truco
         }

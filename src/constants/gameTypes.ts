@@ -4,6 +4,7 @@
 export enum GameType {
     TRUCO = 'truco',
     CHINCHON = 'chinchon',
+    MENTIROSO = 'mentiroso',
     POKER = 'poker'
 }
 
