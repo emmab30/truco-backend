@@ -27,7 +27,13 @@ export class MentirosoGameHandler extends AbstractGameHandler {
     }
 
     getSupportedMessageTypes(): string[] {
-        return [WEBSOCKET_MESSAGE_TYPES.START_GAME, WEBSOCKET_MESSAGE_TYPES.PLAY_CARDS, WEBSOCKET_MESSAGE_TYPES.CHALLENGE, WEBSOCKET_MESSAGE_TYPES.CONTINUE_AFTER_CHALLENGE];
+        return [
+            WEBSOCKET_MESSAGE_TYPES.START_GAME,
+            WEBSOCKET_MESSAGE_TYPES.PLAY_CARDS,
+            WEBSOCKET_MESSAGE_TYPES.CHALLENGE,
+            WEBSOCKET_MESSAGE_TYPES.CONTINUE_AFTER_CHALLENGE,
+            WEBSOCKET_MESSAGE_TYPES.SEND_EMOJI_REACTION,
+        ];
     }
 
     handleMessage(ws: any, message: WebSocketMessage, roomId: string, playerId: string): void {
@@ -48,6 +54,9 @@ export class MentirosoGameHandler extends AbstractGameHandler {
                     break;
                 case WEBSOCKET_MESSAGE_TYPES.CONTINUE_AFTER_CHALLENGE:
                     this.handleContinueAfterChallenge(ws, roomId, playerId);
+                    break;
+                case WEBSOCKET_MESSAGE_TYPES.SEND_EMOJI_REACTION:
+                    this.handleSendEmojiReaction(ws, roomId, playerId, data);
                     break;
                 default:
                     console.log(`❓ Unhandled Mentiroso message type: ${type}`);
@@ -77,7 +86,7 @@ export class MentirosoGameHandler extends AbstractGameHandler {
                 data: { room, game: this.mentirosoGameService.getGameUpdate(room.game.id) },
             });
 
-            this.sendSpeechBubble(roomId, playerId, "¡El juego ha comenzado!", "Sistema", 1);
+                this.sendSpeechBubble(roomId, playerId, "¡El juego ha comenzado!", "Sistema", 5);
         } catch (error) {
             console.error("Error starting Mentiroso game:", error);
             this.wsService.sendError(ws, "Failed to start game");
@@ -146,7 +155,7 @@ export class MentirosoGameHandler extends AbstractGameHandler {
                 };
                 const valueName = valueNames[parsedClaimedValue] || `${parsedClaimedValue}s`;
 
-                this.sendSpeechBubble(roomId, playerId, `Tiró ${cardIds.length} ${valueName}`, playerName, 0);
+                this.sendSpeechBubble(roomId, playerId, `Tiró ${cardIds.length} ${valueName}`, playerName, 3);
 
                 // Check if player won
                 if (result.winner === playerId) {
@@ -159,7 +168,7 @@ export class MentirosoGameHandler extends AbstractGameHandler {
                         },
                     });
 
-                    this.sendSpeechBubble(roomId, playerId, `¡${playerName} ganó el juego!`, "Sistema", 3);
+                    this.sendSpeechBubble(roomId, playerId, `¡${playerName} ganó el juego!`, "Sistema", 10);
                 }
             } else {
                 this.wsService.sendError(ws, "No se puede jugar estas cartas en este momento");
@@ -206,7 +215,7 @@ export class MentirosoGameHandler extends AbstractGameHandler {
                     },
                 });
 
-                this.sendSpeechBubble(roomId, playerId, `${challengerName} desafió a ${targetPlayerName}`, "Sistema", 2);
+                this.sendSpeechBubble(roomId, playerId, `${challengerName} desafió a ${targetPlayerName}`, "Sistema", 8);
 
                 // After a short delay, broadcast the challenge result
                 setTimeout(() => {
@@ -220,17 +229,43 @@ export class MentirosoGameHandler extends AbstractGameHandler {
                             wasLying,
                             revealedCards,
                             challengerId: playerId,
+                            challengerName: challengerName,
                             targetPlayerId: mentirosoState.lastPlayedGroup?.playerId,
+                            targetPlayerName: targetPlayerName,
                             penalizedPlayerId,
                             game: this.mentirosoGameService.getGameUpdate(room.game.id),
                         },
                     });
 
                     if (wasLying) {
-                        this.sendSpeechBubble(roomId, playerId, `¡${targetPlayerName} mentía! Recibe las cartas.`, "Sistema", 2);
+                        this.sendSpeechBubble(roomId, playerId, `¡${targetPlayerName} mentía! Recibe las cartas.`, "Sistema", 10);
                     } else {
-                        this.sendSpeechBubble(roomId, playerId, `${targetPlayerName} decía la verdad. ${challengerName} recibe las cartas.`, "Sistema", 2);
+                        this.sendSpeechBubble(roomId, playerId, `${targetPlayerName} decía la verdad. ${challengerName} recibe las cartas.`, "Sistema", 10);
                     }
+
+                    // Auto-continue after 3 seconds
+                    setTimeout(() => {
+                        try {
+                            const roomAfterDelay = this.roomService.getRoom(roomId);
+                            if (!roomAfterDelay) return;
+
+                            const continuedGame = this.mentirosoGameService.continueAfterChallenge(roomAfterDelay.game.id);
+                            if (continuedGame) {
+                                roomAfterDelay.game = continuedGame;
+
+                                this.wsService.broadcastToRoom(roomId, {
+                                    type: WEBSOCKET_MESSAGE_TYPES.GAME_UPDATE,
+                                    data: {
+                                        game: this.mentirosoGameService.getGameUpdate(roomAfterDelay.game.id),
+                                    },
+                                });
+
+                                this.sendSpeechBubble(roomId, "system", "¡Nueva ronda!", "Sistema", 5);
+                            }
+                        } catch (error) {
+                            console.error("Error auto-continuing after challenge:", error);
+                        }
+                    }, 3000);
                 }, 1000);
             } else {
                 this.wsService.sendError(ws, "No se puede desafiar en este momento");
@@ -265,13 +300,55 @@ export class MentirosoGameHandler extends AbstractGameHandler {
                     },
                 });
 
-                this.sendSpeechBubble(roomId, "system", "¡Nueva ronda!", "Sistema", 1);
+                this.sendSpeechBubble(roomId, "system", "¡Nueva ronda!", "Sistema", 5);
             } else {
                 this.wsService.sendError(ws, "No se puede continuar en este momento");
             }
         } catch (error) {
             console.error("Error continuing after challenge:", error);
             this.wsService.sendError(ws, "Failed to continue");
+        }
+    }
+
+    /**
+     * Handle send emoji reaction
+     */
+    private handleSendEmojiReaction(ws: any, roomId: string, playerId: string, data?: any): void {
+        if (!data?.emoji) {
+            this.wsService.sendError(ws, "Emoji is required");
+            return;
+        }
+
+        try {
+            const room = this.roomService.getRoom(roomId);
+            if (!room) return;
+
+            const game = room.game;
+            const player = game.players.find((p: any) => p.id === playerId);
+
+            if (!player) {
+                console.error("Player not found");
+                return;
+            }
+
+            // Generate unique ID for the emoji reaction
+            const reactionId = `emoji_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+            // Broadcast emoji reaction to all players in the room
+            this.wsService.broadcastToRoom(roomId, {
+                type: WEBSOCKET_MESSAGE_TYPES.EMOJI_REACTION,
+                data: {
+                    id: reactionId,
+                    emoji: data.emoji,
+                    playerName: player.name,
+                    playerId: playerId,
+                },
+            });
+
+            console.log(`🎭 Emoji reaction sent: ${data.emoji} by ${player.name}`);
+        } catch (error) {
+            console.error("Error sending emoji reaction:", error);
+            this.wsService.sendError(ws, "Failed to send emoji reaction");
         }
     }
 

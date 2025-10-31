@@ -322,6 +322,12 @@ export function challenge(game: Game, challengerId: string): Game {
         return game;
     }
 
+    // Protection against race conditions: reject if already revealing or challenge already in progress
+    if (state.isRevealing || state.challengerId) {
+        console.error("Challenge already in progress");
+        return game;
+    }
+
     if (!state.canChallenge) {
         console.error("Cannot challenge at this time");
         return game;
@@ -393,22 +399,23 @@ export function continueAfterChallenge(game: Game): Game {
         return game;
     }
 
-    // The penalized player starts the next round
-    const penalizedPlayerId = state.wasLying ? state.lastPlayedGroup?.playerId : state.challengerId;
+    // The player whose turn it was continues playing
+    // (The turn continues from where it was, not from the penalized player)
+    const nextPlayerId = state.currentPlayerId;
 
-    if (!penalizedPlayerId) {
+    if (!nextPlayerId) {
         console.error("Cannot determine next player");
         return game;
     }
 
-    // Reset state for a new round
+    // Reset state for a new round but keep the turn order
     return {
         ...game,
         currentHand: {
             ...game.currentHand,
-            currentPlayerId: penalizedPlayerId,
+            currentPlayerId: nextPlayerId,
             mentirosoState: {
-                ...createInitialMentirosoState(penalizedPlayerId),
+                ...createInitialMentirosoState(nextPlayerId),
                 roundNumber: state.roundNumber + 1,
             },
         },
@@ -445,11 +452,14 @@ export function getAvailableActions(game: Game, playerId: string): Action[] {
         });
     }
 
-    // Can challenge if not the player who just played
-    if (state.canChallenge && state.lastPlayedGroup?.playerId !== playerId) {
+    // Can challenge if:
+    // 1. There's a last played group (someone has played cards)
+    // 2. The player is not the one who just played
+    // 3. Not currently revealing cards
+    if (state.lastPlayedGroup && state.lastPlayedGroup.playerId !== playerId && !state.isRevealing) {
         actions.push({
             type: ActionType.CHALLENGE,
-            label: "Liar!",
+            label: "¡MIENTE!",
             priority: 2,
             color: "red",
         });

@@ -185,16 +185,17 @@ export class MentirosoGameService extends BaseGameService {
             throw new Error("Game not found");
         }
 
-        // Add player status to each player
-        const playersWithStatus = game.players.map((player: MentirosoPlayer) => ({
+        // Add player status and available actions to each player
+        const playersWithStatusAndActions = game.players.map((player: MentirosoPlayer) => ({
             ...player,
             status: this.getPlayerStatus(player.id),
+            availableActions: getAvailableActions(game, player.id),
         }));
 
         // Create the MentirosoGame response with BaseGame structure
         const mentirosoGame: MentirosoGame = {
             id: game.id,
-            players: playersWithStatus.map((p: MentirosoPlayer) => ({
+            players: playersWithStatusAndActions.map((p: any) => ({
                 id: p.id,
                 name: p.name,
                 photo: p.photo,
@@ -206,7 +207,7 @@ export class MentirosoGameService extends BaseGameService {
             maxPlayers: game.gameConfig.maxPlayers,
             metadata: {
                 phase: game.phase,
-                players: playersWithStatus,
+                players: playersWithStatusAndActions,
                 currentHand: game.currentHand,
                 gameConfig: game.gameConfig,
                 winner: game.winner,
